@@ -1,6 +1,6 @@
 #!/usr/bin/env bash 
 
-usage() { echo "Usage: $0 [-f <file or uri>] [-t <target file>] [-s <source resource or directory>] [-m <retrieval method>]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-f <file or uri>] [-t <target file>] [-s <source resource or directory>] [-m <retrieval method>]" 1>&2; }
 
 # Parse arguments
 
@@ -23,6 +23,7 @@ while getopts ":f:t:s:m:" o; do
             ;;
         *)
             usage
+            exit 0
             ;;
     esac
 done
@@ -30,6 +31,7 @@ shift $((OPTIND-1))
 
 if [ -z "${f}" ] || [ -z "${s}" ] || [ -z "${t}" ] || [ -z "${m}" ]; then
     usage
+    exit 1
 fi
 
 # Source functions from script directory
