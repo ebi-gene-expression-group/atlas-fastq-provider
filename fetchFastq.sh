@@ -34,8 +34,8 @@ fi
 
 # Source functions from script directory
 scriptDir=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-source $scriptDir/functions.sh
-source $scriptDir/config.sh
+source $scriptDir/atlas-fastq-provider-functions.sh
+source $scriptDir/atlas-fastq-provider-config.sh
 
 # Re-assign variables for readability
 
@@ -94,7 +94,6 @@ else
         fi
     elif [ "$file_source" == 'ena' ]; then
         if [ "$method" == 'ssh' ]; then
-        
             # Use an SSH connection to retrieve the file
             fetch_file_from_ena_over_ssh $file_or_uri $target
             if [ $? -ne 0 ]; then

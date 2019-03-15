@@ -52,7 +52,7 @@ check_sudo() {
 
 check_ena_ssh() {
     if [ -z "$ENA_SSH_USER" ]; then
-        echo "To query or download files from the ENA server using ssh you need to set the environment variable ENA_SSH_USER. This is a user to which you can sudo, and which can SSH to $ENA_HOST and retrieve files from $ENA_ROOT_DIR." 
+        echo "To query or download files from the ENA server using ssh you need to set the environment variable ENA_SSH_USER. This is a user to which you can sudo, and which can SSH to $ENA_SSH_HOST and retrieve files from $ENA_SSH_ROOT_DIR." 1>&2
         return 1
     else
         return 0
@@ -100,11 +100,11 @@ check_file_in_ena() {
         return 1
     fi 
 
-    $sudoString ssh -n ${ENA_HOST} "ls ${enaFile}" > /dev/null 2>&1 
+    $sudoString ssh -n ${ENA_SSH_HOST} "ls ${enaFile}" > /dev/null 2>&1 
     if [ $? -eq 0 ]; then
         return 0
     else
-        echo "${enaFile} not present on ${ENA_HOST}"
+        echo "${enaFile} not present on ${ENA_SSH_HOST}"
         return 1
     fi
 }
@@ -166,8 +166,8 @@ fetch_file_from_ena_over_ssh() {
     # location with the correct user, and remove the old one. This works, while
     # a 'chown' would not.
 
-    echo "Downloading remote file $enaPath to $destFile"
-    chmod g+w $(dirname ${destFile}) && ($sudoString rsync -ssh -avc ${ENA_HOST}:$enaPath ${destFile}.tmp > /dev/null) && cp ${destFile}.tmp ${destFile} && rm -f ${destFile}.tmp > /dev/null
+    echo "Downloading remote file $enaPath to $destFile over SSH"
+    chmod g+w $(dirname ${destFile}) && ($sudoString rsync -ssh -avc ${ENA_SSH_HOST}:$enaPath ${destFile}.tmp > /dev/null) && cp ${destFile}.tmp ${destFile} && rm -f ${destFile}.tmp > /dev/null
     if [ $? -ne 0 ] || [ ! -s ${destFile} ] ; then
         echo "Failed to retrieve $enaPath to ${destFile}" >&2
         return 3
@@ -205,7 +205,7 @@ fetch_library_files_from_ena() {
 
     # Construct library paths for remote and local
 
-    remoteFastqPath=$(get_library_path $library ${ENA_ROOT_DIR})
+    remoteFastqPath=$(get_library_path $library ${ENA_SSH_ROOT_DIR})
     localFastqPath=${outputDirectory}/$(get_library_path $library)
 
     # Create local directory for FASTQ file - if it doesn't already exist
@@ -244,7 +244,7 @@ get_ena_library_files() {
     local library=$1
     local libDir=$(dirname $(get_library_path $library))
 
-    $(fetch_ena_sudo_string) ssh -n ${ENA_HOST} ls ${ENA_ROOT_DIR}/$libDir/*
+    $(fetch_ena_sudo_string) ssh -n ${ENA_SSH_HOST} ls ${ENA_SSH_ROOT_DIR}/$libDir/*
 }
 
 # Convert an SRA-style file to its path on the ENA node 
@@ -256,7 +256,7 @@ convert_ena_fastq_to_ssh_path(){
     local library=$(echo $fastq | grep -o "[SED]RR[0-9]*")
     local libDir=$(dirname $(get_library_path $library))
 
-    echo ${ENA_ROOT_DIR}/$libDir/$fastq
+    echo ${ENA_SSH_ROOT_DIR}/$libDir/$fastq
 }
 
 # Convert an SRA-style file to its path at the HTTP endpoint 
