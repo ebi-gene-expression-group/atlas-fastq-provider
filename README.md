@@ -34,11 +34,15 @@ fetchFastq.sh -f ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR188/006/ERR1888646/ERR188
 fetchFastq.sh -f ERR1888646_1.fastq.gz -t ERR1888646_1.fastq.gz -m http
 ```
 
+This fetches files using the new HTTP endpoint, as specified in ENA_HTTP_ROOT_PATH in the [config file](atlas-fastq-provider-config.sh).
+
 ### Download from ENA using SSH
 
 ```
 fetchFastq.sh -f ERR1888646_1.fastq.gz -t ERR1888646_1.fastq.gz -m ssh
 ```
+
+This will attempt to pull files directly from the ENA server, using the host and path in the [config file](atlas-fastq-provider-config.sh). To do this you must set environment variable 'ENA_SSH_USER'. This should be a user you either are, or can sudo to, with permissions to SSH to the SRA host. This is only likely to be possible if you're privileged member of staff at the EBI.
 
 ### Use a local diretory as a source, producing a symlink
 
