@@ -189,6 +189,18 @@ fetch_file_from_ena_over_http() {
     fetch_file_by_wget $enaPath $destFile
 }
 
+fetch_file_from_ena_over_ftp() {
+    local enaFile=$1
+    local destFile=$2
+
+    check_variables "enaFile" "destFile"
+    
+    # Convert
+    local enaPath=$(convert_ena_fastq_to_ftp_path $enaFile)
+
+    fetch_file_by_wget $enaPath $destFile
+}
+
 fetch_library_files_from_ena() {
     
     local $library=$1
@@ -257,6 +269,18 @@ convert_ena_fastq_to_ssh_path(){
     local libDir=$(dirname $(get_library_path $library))
 
     echo ${ENA_SSH_ROOT_DIR}/$libDir/$fastq
+}
+
+# Convert an SRA-style file to its path at the HTTP endpoint 
+
+convert_ena_fastq_to_ftp_path(){
+    local fastq=$1
+
+    local fastq=$(basename $fastq)
+    local library=$(echo $fastq | grep -o "[SED]RR[0-9]*")
+    local libDir=$(dirname $(get_library_path $library))
+
+    echo ${ENA_FTP_ROOT_PATH}/$libDir/$fastq
 }
 
 # Convert an SRA-style file to its path at the HTTP endpoint 
