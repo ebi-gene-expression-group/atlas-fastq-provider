@@ -10,15 +10,34 @@ This package can be installed via Bioconda:
 conda install -c ebi-gene-expression-group atlas-fastq-provider
 ```
 
+## Configuration
+
+Installation will create a file 'atlas-fastq-provider-config.sh' in the same install directory as the main script fetchFastq.sh. Config variables can be modified in this file.
+
+```
+ENA_SSH_HOST='sra-login-1'
+ENA_SSH_ROOT_DIR='/nfs/era-pub/vol1/fastq/'
+ENA_PRIVATE_SSH_ROOT_DIR='/private/path'
+ENA_FTP_ROOT_PATH='ftp://ftp.sra.ebi.ac.uk/vol1/fastq'
+ENA_HTTP_ROOT_PATH='https://hh.fire.sdo.ebi.ac.uk/fire/public/era/fastq'
+FASTQ_PROVIDER_TEMPDIR='/tmp/atlas-fastq-provider'
+ENA_TEST_FILE='ERR1888172_1.fastq.gz'
+FETCH_FREQ_MILLIS=500
+PROBE_UPDATE_FREQ_MINS=15
+ENA_RETRIES=3
+```
+
 ## Generic usage
 
 ```
-fetchFastq.sh [-f <file or uri>] [-t <target file>] [-s <source resource or directory>] [-m <retrieval method>]
+fetchFastq.sh [-f <file or uri>] [-t <target file>] [-s <source resource or directory>] [-m <retrieval method, default 'auto'>] [-p <public or private, default public>] [-l <library, by default inferred from file name>]
 ```
 
 Only the source file (-f) and target (-t) arguments are compulsory. 
 
 This is a generic utility to provide FASTQ files for use in pipelines etc. Files can be downloaded from links, or linked to files in directories on the file system. There are 'special cases' where things can be handled differently, for example in fetching files from ENA via SSH or the new HTTP endpoints. The special cases will be triggered based on the source, which if set to 'auto' (the default) will be guessed (e.g. ena for SRR/DRR/ERR identifiers). 
+
+For the ENA, there are three methods: FTP, SSH and HTTP. FTP is the default method that will work for everyone. EBI personal with the right privileges can also copy files over SSH directly from the ENA servers. There is also a new internal HTTP endpoint (currently unreliable) that can be used by EBI personnel. Specifying 'auto' will test each of these methods and select the fastest, storing results in a 'probe' file. This file will be updated according to the interval specified in the confi variable PROBE_UPDATE_FREQ_MINS.
 
 ## Examples
 
@@ -43,6 +62,16 @@ fetchFastq.sh -f ERR1888646_1.fastq.gz -t ERR1888646_1.fastq.gz -m ssh
 ```
 
 This will attempt to pull files directly from the ENA server, using the host and path in the [config file](atlas-fastq-provider-config.sh). To do this you must set environment variable 'ENA_SSH_USER'. This should be a user you either are, or can sudo to, with permissions to SSH to the SRA host. This is only likely to be possible if you're privileged member of staff at the EBI.
+
+#### Private files
+
+EBI personnel can also retrieve files from private locations on the ENA server by specifying ENA_PRIVATE_SSH_ROOT_DIR and running commands like:
+
+```
+fetchFastq.sh -f my_private_file1.fastq.gz -t my_private_file1.fastq.gz -p private -l ERR123456
+```
+
+Note that the library name must also be specified.
 
 ### Use a local diretory as a source, producing a symlink
 
