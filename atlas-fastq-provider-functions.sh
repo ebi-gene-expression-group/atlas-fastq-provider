@@ -519,64 +519,6 @@ fetch_file_from_ena_over_ftp() {
     fetch_file_by_wget $enaPath $destFile $retries ftp ena
 }
 
-fetch_library_files_from_ena() {
-    
-    local $library=$1
-    local $outputDirectory=$2
-    
-    check_variables "library" "outputDirectory"
-    check_ena_ssh
-
-    if [ $? -eq 1 ]; then
-        return 1
-    fi 
-
-    echo "About to retrieve $sepe-END library: $library from ENA ... "
-
-    # Construct library paths for remote and local
-
-    remoteFastqPath=$(get_library_path $library ${ENA_SSH_ROOT_DIR})
-    localFastqPath=${outputDirectory}/$(get_library_path $library)
-
-    # Create local directory for FASTQ file - if it doesn't already exist
-
-    localFastqDir=`dirname $localFastqPath`
-    mkdir -p $localFastqDir
-    chmod g+w $localFastqDir
-
-    # Check if we need to sudo, and if we can
-
-    currentUser=$(whoami)
-    if [ $currentUser != $ENA_SSH_USER ]; then
-        check_sudo $ENA_SSH_USER
-        echo "SSH will be sudo'd as $ENA_SSH_USER"
-        sudoString="sudo -u $ENA_SSH_USER "
-    else
-        sudoString=""
-    fi
-
-    # Check for possible extensions and download
-
-    for ext in '_1.fastq.gz' '_2.fastq.gz' '.fastq.gz'; do
-        check_file_in_ena ${remoteFastqPath}${ext}
-        
-        fileStatus=$?
-        if [ $fileStatus -eq 0 ]; then
-            echo "Found ${ext} file, downloading"
-            fetch_file_from_ena_over_ssh ${remoteFastqPath}${ext} ${localFastqPath}${ext}
-        fi
-    done
-}
-
-# Get a list of all the files present for a given library
-
-get_ena_library_files() {
-    local library=$1
-    local libDir=$(dirname $(get_library_path $library))
-
-    $(fetch_ena_sudo_string) ssh -n ${ENA_SSH_HOST} ls ${ENA_SSH_ROOT_DIR}/$libDir/*
-}
-
 # Convert an SRA-style file to its path on the ENA node 
 
 convert_ena_fastq_to_ssh_path(){
