@@ -118,19 +118,19 @@ else
     elif [ "$file_source" == 'ena' ]; then
         if [ "$method" == 'ssh' ]; then
             # Use an SSH connection to retrieve the file
-            fetch_file_from_ena_over_ssh $file_or_uri $target $ENA_RETRIES $status $library 
+            fetch_file_from_ena_over_ssh $file_or_uri $target $ENA_RETRIES $library $status 
             fetch_status=$?    
  
         elif [ "$method" == 'http' ]; then
             
             # Use the HTTP endpoint to get the file
-            fetch_file_from_ena_over_http $file_or_uri $target $ENA_RETRIES
+            fetch_file_from_ena_over_http $file_or_uri $target $ENA_RETRIES $library
             fetch_status=$?    
         
         elif [ "$method" == 'ftp' ]; then
             
             # Use the HTTP endpoint to get the file
-            fetch_file_from_ena_over_ftp $file_or_uri $target $ENA_RETRIES
+            fetch_file_from_ena_over_ftp $file_or_uri $target $ENA_RETRIES $library
             fetch_status=$?    
         
         elif [ "$method" == 'auto' ]; then

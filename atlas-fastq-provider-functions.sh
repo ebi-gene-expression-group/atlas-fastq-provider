@@ -379,6 +379,7 @@ fetch_file_from_ena_auto() {
     local enaFile=$1
     local destFile=$2
     local retries=${3:-3}
+    local library=${4:-''}
 
     check_variables "enaFile" "destFile"
     
@@ -417,8 +418,8 @@ fetch_file_from_ena_over_ssh() {
     local enaFile=$1
     local destFile=$2
     local retries=${3:-3}
-    local status=${4:-'public'}
-    local library=${5:-''}
+    local library=${4:-''}
+    local status=${5:-'public'}
 
     check_variables "enaFile" "destFile"
 
@@ -495,11 +496,12 @@ fetch_file_from_ena_over_http() {
     local enaFile=$1
     local destFile=$2
     local retries=${3:-3}
+    local library=${4:-''}
 
     check_variables "enaFile" "destFile"
 
     # Convert
-    local enaPath=$(convert_ena_fastq_to_http_path $enaFile)
+    local enaPath=$(convert_ena_fastq_to_uri $enaFile http $library)
     
     # Fetch
     fetch_file_by_wget $enaPath $destFile $retries http ena
@@ -509,11 +511,12 @@ fetch_file_from_ena_over_ftp() {
     local enaFile=$1
     local destFile=$2
     local retries=${3:-3}
+    local library=${4:-''}
 
     check_variables "enaFile" "destFile"
     
     # Convert
-    local enaPath=$(convert_ena_fastq_to_ftp_path $enaFile)
+    local enaPath=$(convert_ena_fastq_to_uri $enaFile ftp $library)
 
     # Fetch
     fetch_file_by_wget $enaPath $destFile $retries ftp ena
@@ -546,28 +549,26 @@ convert_ena_fastq_to_ssh_path(){
     echo $libDir/$fastq
 }
 
-# Convert an SRA-style file to its path at the HTTP endpoint 
+# Convert an SRA-style file to its URI 
 
-convert_ena_fastq_to_ftp_path(){
+convert_ena_fastq_to_uri() {
     local fastq=$1
+    local uriType=${2}
+    local library=${3:-''}
 
     local fastq=$(basename $fastq)
-    local library=$(echo $fastq | grep -o "[SED]RR[0-9]*")
+
+    if [ "$library" == '' ]; then
+         library=$(echo $fastq | grep -o "[SED]RR[0-9]*")
+    fi
+
     local libDir=$(dirname $(get_library_path $library))
 
-    echo ${ENA_FTP_ROOT_PATH}/$libDir/$fastq
-}
-
-# Convert an SRA-style file to its path at the HTTP endpoint 
-
-convert_ena_fastq_to_http_path(){
-    local fastq=$1
-
-    local fastq=$(basename $fastq)
-    local library=$(echo $fastq | grep -o "[SED]RR[0-9]*")
-    local libDir=$(dirname $(get_library_path $library))
-
-    echo ${ENA_HTTP_ROOT_PATH}/$libDir/$fastq
+    if [ "$uriType" == 'http' ]; then
+        echo ${ENA_HTTP_ROOT_PATH}/$libDir/$fastq
+    else
+        echo ${ENA_FTP_ROOT_PATH}/$libDir/$fastq
+    fi
 }
 
 # Check a URI is valid
