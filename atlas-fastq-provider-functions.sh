@@ -276,6 +276,8 @@ probe_ena_methods() {
     local probe_file=$tempdir/fastq_provider.probe
     echo -e "method\tresult\tstatus\telapsed_time\tdownload_speed" >> ${probe_file}.tmp
 
+    export NOPROBE=1
+
     for method in http ftp ssh; do
         echo "Testing method $method..."
         local function="fetch_file_from_ena_over_$method"
@@ -296,6 +298,8 @@ probe_ena_methods() {
         rm -f $tempdir/temp.fq.gz
     done    
 
+    export NOPROBE=
+
     mv ${probe_file}.tmp ${probe_file}
     echo "ENA retrieval probe results at $tempdir/fastq_provider.probe"
 }
@@ -307,7 +311,9 @@ update_ena_probe() {
     local probe_file=$tempdir/fastq_provider.probe
 
     if [ ! -e $probe_file ]; then
-        probe_ena_methods > /dev/null 2>&1
+        echo "Creating ENA probe file, testing available download methods" 1>&2
+        probe_ena_methods
+        echo "Done with probe" 1>&2
     fi
 
     local probe_age=$(file_age $probe_file mins)
@@ -332,11 +338,17 @@ check_ena_method() {
     local tempdir=$(get_temp_dir)
     local probe_file=$tempdir/fastq_provider.probe
 
-    update_ena_probe
-    local method_status=$(tail -n +2 $probe_file | awk '$1=="'$method'"' | awk '{print $5}')
+    if [ -z "$NOPROBE" ]; then
+        update_ena_probe
+    fi
 
-    if [ "$method_status" == 'NA' ]; then
-        return 1
+    if [ -e "$probe_file" ]; then
+        local method_status=$(tail -n +2 $probe_file | awk '$1=="'$method'"' | awk '{print $5}')
+        if [ "$method_status" == 'NA' ]; then
+            return 1
+        else
+            return 0
+        fi
     else
         return 0
     fi

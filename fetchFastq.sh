@@ -1,6 +1,6 @@
 #!/usr/bin/env bash 
 
-usage() { echo "Usage: $0 [-f <file or uri>] [-t <target file>] [-s <source resource or directory, default 'auto'>] [-m <retrieval method, default 'wget'>] [-p <public or private, default public>] [-l <library, by default inferred from file name>]" 1>&2; }
+usage() { echo "Usage: $0 [-f <file or uri>] [-t <target file>] [-s <source resource or directory, default 'auto'>] [-m <retrieval method, default 'wget'>] [-p <public or private, default public>] [-l <library, by default inferred from file name>] [-c <config file to override defaults>]" 1>&2; }
 
 # Parse arguments
 
@@ -9,7 +9,7 @@ m=wget
 p=public
 l=
 
-while getopts ":f:t:s:m:p:l:" o; do
+while getopts ":f:t:s:m:p:l:c:" o; do
     case "${o}" in
         f)
             f=${OPTARG}
@@ -28,6 +28,9 @@ while getopts ":f:t:s:m:p:l:" o; do
             ;;
         l)
             l=${OPTARG}
+            ;;
+        c)
+            c=${OPTARG}
             ;;
         *)
             usage
@@ -55,6 +58,11 @@ file_source=$s
 method=$m
 status=$p
 library=$l
+configFile=$c
+
+if [ ! -z "$configFile" ]; then
+    source $configFile
+fi
 
 # With auto, guess the source
 
