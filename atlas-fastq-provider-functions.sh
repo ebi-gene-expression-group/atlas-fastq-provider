@@ -82,7 +82,7 @@ fetch_ena_sudo_string() {
 # because any 'while read' loops calling this script use STDIN, which SSH will
 # consume otherwise.
 
-check_file_in_ena() {
+validate_ena_ssh_path() {
     local enaFile=$1
 
     sudoString=$(fetch_ena_sudo_string)
@@ -247,6 +247,7 @@ fetch_file_by_wget() {
     # All being well proceed with the download
 
     echo "Downloading $sourceFile to $destFile using wget"
+    mkdir -p $(dirname $destFile)
     local process_status=1
     for i in $(seq 1 $retries); do 
         if [ "$method" != '' ]; then
@@ -461,7 +462,7 @@ fetch_file_from_ena_over_ssh() {
     enaPath=$(convert_ena_fastq_to_ssh_path $enaFile $status $library)
 
     # Check file is present at specified location    
-    check_file_in_ena $enaPath    
+    validate_ena_ssh_path $enaPath    
     if [ $? -ne 0 ]; then return 5; fi
     
     # Make destination group-writable if we need to sudo
@@ -475,6 +476,7 @@ fetch_file_from_ena_over_ssh() {
     # Run the rsync over SSH, sudo'ing if necessary use wait_and_record() to
     # avoid overloading the server
 
+    mkdir -p $(dirname $destFile)
     local process_status=1
     for i in $(seq 1 $retries); do 
         
@@ -586,7 +588,7 @@ convert_ena_fastq_to_uri() {
 
 # Check a URI is valid
 
-function validate_url(){
+validate_url(){
 
     wget -q -S --spider $1 > /dev/null 2>&1
     response=$?
@@ -597,4 +599,69 @@ function validate_url(){
     else 
         echo "Link $1 valid"
     fi
+}
+
+# Get all files for a given library
+
+get_library_listing() {
+    local library=$1
+    local method=${2:-'ssh'}    
+    local status=${3:-'public'}
+
+    check_variables 'library'
+
+    local libDir=
+    if [ "$method" == 'ssh' ]; then
+        if [ "$status" == 'private' ]; then
+            libDir=$(dirname $(get_library_path $library $ENA_PRIVATE_SSH_ROOT_DIR 'short'))
+        else
+            libDir=$(dirname $(get_library_path $library $ENA_SSH_ROOT_DIR))
+        fi
+    else
+        libDir=$(get_library_path $library $ENA_FTP_ROOT_PATH)
+    fi
+    
+    if [ "$method" == 'ssh' ]; then
+        sudoString=$(fetch_ena_sudo_string)
+        if [ $? -ne 0 ]; 
+            then return 4; 
+        fi
+
+        $sudoString ssh -n ${ENA_SSH_HOST} ls $libDir/*
+    elif [ "$method" == 'ftp' ]; then
+        wget --spider --no-remove-listing $libDir > /dev/null 2>&1
+        cat .listing | grep -vP "\.\s+$" | awk '{print $NF}' | while read -r l; do
+            echo $libDir/$l | sed 's/\r$//' 
+        done
+        rm -rf .listing
+    fi
+}
+
+# Fetch all available files for a given library
+
+fetch_library_files_from_ena() {
+    local library=$1
+    local outputDir=$2
+    local retries=${3:-3}
+    local method=${4:-'ssh'}
+    local status=${5:-'public'}
+
+    check_variables 'library'
+
+    local listMethod='ftp'
+    if [ "$method" == 'ssh' ]; then
+        listMethod='ssh'
+    fi
+
+    get_library_listing $library $listMethod $status | while read -r l; do
+       local fileName=$(basename $l )
+       echo "Downloading file $fileName for $library to $outputDir"
+        if [ $method == 'auto' ]; then
+            fetchMethod='fetch_file_from_ena_auto'
+        else
+            fetchMethod="fetch_file_from_ena_over_$method"
+        fi
+
+        $fetchMethod $l $outputDir/$fileName $retries $library $status
+    done
 }
