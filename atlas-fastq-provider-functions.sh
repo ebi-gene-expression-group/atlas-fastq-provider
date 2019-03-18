@@ -273,8 +273,8 @@ fetch_file_by_wget() {
 probe_ena_methods() {
 
     local tempdir=$(get_temp_dir)
-    rm -f $tempdir/fastq_provider.probe
-    echo -e "method\tresult\tstatus\telapsed_time\tdownload_speed" >> $tempdir/fastq_provider.probe
+    local probe_file=$tempdir/fastq_provider.probe
+    echo -e "method\tresult\tstatus\telapsed_time\tdownload_speed" >> ${probe_file}.tmp
 
     for method in http ftp ssh; do
         echo "Testing method $method..."
@@ -292,10 +292,11 @@ probe_ena_methods() {
             local test_file_size=$(stat --printf="%s" $tempdir/temp.fq.gz)
             download_speed=$(bc -l <<< "scale=2; $test_file_size / 1000000 / $elapsed_time")
         fi
-        echo -e "$method\t$result\t$status\t$elapsed_time\t$download_speed" >> $tempdir/fastq_provider.probe
+        echo -e "$method\t$result\t$status\t$elapsed_time\t$download_speed" >> ${probe_file}.tmp
         rm -f $tempdir/temp.fq.gz
     done    
 
+    mv ${probe_file}.tmp ${probe_file}
     echo "ENA retrieval probe results at $tempdir/fastq_provider.probe"
 }
 
