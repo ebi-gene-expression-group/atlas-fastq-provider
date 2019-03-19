@@ -728,7 +728,7 @@ get_library_listing() {
             libDir=$(dirname $(get_library_path $library $ENA_SSH_ROOT_DIR))
         fi
     else
-        libDir=$(get_library_path $library $ENA_FTP_ROOT_PATH)
+        libDir=$(dirname $(get_library_path $library $ENA_FTP_ROOT_PATH))
     fi
     
     if [ "$method" == 'ssh' ]; then
@@ -739,7 +739,7 @@ get_library_listing() {
 
         $sudoString ssh -n ${ENA_SSH_HOST} ls $libDir/*
     elif [ "$method" == 'ftp' ]; then
-        wget --spider --no-remove-listing $libDir > /dev/null 2>&1
+        wget --spider --no-remove-listing $libDir/ > /dev/null 2>&1
         cat .listing | grep -vP "\.\s+$" | awk '{print $NF}' | while read -r l; do
             echo $libDir/$l | sed 's/\r$//' 
         done

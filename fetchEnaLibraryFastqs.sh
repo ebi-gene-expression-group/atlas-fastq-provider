@@ -73,11 +73,11 @@ fetchStatus=$?
 
 if [ $fetchStatus -eq 0 ]; then
     echo "Successfully downloaded $library from ENA with $method"
+elif [ $fetchStatus -eq 2 ]; then 
+    echo  "Skipped download of already existing $library files from ENA with $method: " 
 else
     echo -n "Failed to download $library files from ENA with $method: " 
-    if [ $fetchStatus -eq 2 ]; then
-        echo "file already exists"
-    elif [ $fetchStatus -eq 3 ]; then
+    if [ $fetchStatus -eq 3 ]; then
         echo "$method method not currently working"
     elif [ $fetchStatus -eq 4 ]; then
         echo "cannot sudo to SSH user"
