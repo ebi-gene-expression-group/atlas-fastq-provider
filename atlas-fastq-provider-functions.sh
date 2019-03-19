@@ -107,17 +107,59 @@ validate_ena_ssh_path() {
 
 link_local_file() {
     
-    local sourceFile=$1
-    local destFile=$2
+    local sourceDir=$1
+    local sourceFile=$2
+    local destFile=$3
+        
+    check_variables 'sourceDir' 'sourceFile' 'destFile'
+   
+    # Check source directory exists
+ 
+    if [ ! -d "$sourceDir" ]; then
+        echo "$sourceDir is not a directory" 1>&2
+        return 7   
+    fi
+
+    # Convert relative to absolute
+
+    if [ "${sourceDir:0:1}" != "/" ]; then
+        sourceDir=$(pwd)/$sourceDir
+    fi
     
-    check_variables "sourceFile" "destFile"
+    # Check file itself exists
     
-    if [ -e "$sourceFile" ]; then
-        ln -s $sourceFile $destFile
+    if [ -e "$destFile" ]; then
+        return 2
+
+    elif [ -e "$sourceDir/$sourceFile" ]; then
+        ln -s $sourceDir/$sourceFile $destFile
+    
     else
         echo "ERROR: Local file $sourceFile does not exist" 1>&2
-        return 1
+        return 5
     fi
+}
+
+# Link files from a local directory to a targe directory
+
+link_local_dir() {
+    
+    local sourceDir=$1
+    local destDir=$2
+
+    # Check source directory exists
+ 
+    if [ ! -d "$sourceDir" ]; then
+        echo "$sourceDir is not a directory" 1>&2
+        return 7   
+    fi
+
+    # Convert relative to absolute
+     
+    mkdir -p $destDir
+    ls $sourceDir | while read -r l; do
+        link_local_file $sourceDir $l $destDir/$l
+    done
 }
 
 # Get the current temp dir

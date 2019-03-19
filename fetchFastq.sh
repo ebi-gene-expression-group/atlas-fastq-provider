@@ -86,13 +86,6 @@ if [ "$method" == 'auto' ]; then
         method='wget'
     fi
 
-elif [ "$method" == 'dir' ]; then
-    
-    if [ ! -d "$fileSource" ]; then
-        echo "$fileSource is not a directory" 1>&2
-        exit 7   
-    fi
-
 elif [ "$method" != 'wget' ]; then
     
     if [ "$fileSource" == 'ena' ]; then
@@ -119,7 +112,7 @@ if [ "$method" == 'wget' ]; then
     fetch_status=$?    
 
 elif [ "$method" == 'dir' ]; then
-    link_local_file $fileSource/$file_or_uri $file_or_uri
+    link_local_file $fileSource $file_or_uri $target
     fetch_status=$?    
 
 elif [ "$method" == 'ena_ssh' ]; then

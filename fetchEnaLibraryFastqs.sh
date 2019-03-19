@@ -10,7 +10,7 @@ m=auto
 s=
 p=public
 
-while getopts ":l:d:s:p:c:" o; do
+while getopts ":l:d:m:s:p:c:" o; do
     case "${o}" in
         l)
             l=${OPTARG}
@@ -53,7 +53,7 @@ source $scriptDir/atlas-fastq-provider-config.sh
 library=$l
 outputDir=$d
 method=$m
-file_source=$s
+fileSource=$s
 status=$p
 configFile=$c
 
@@ -61,7 +61,11 @@ if [ ! -z "$configFile" ]; then
     source $configFile
 fi
 
-fetch_library_files_from_ena $library $outputDir $ENA_RETRIES $method $status
+if [ "$method" == 'dir' ]; then
+    link_local_dir "$fileSource" "$outputDir"
+else
+    fetch_library_files_from_ena $library $outputDir $ENA_RETRIES $method $status
+fi
 
 fetchStatus=$?
 
