@@ -28,7 +28,7 @@ check_variables() {
         local value=${!variable}        
         #if [[ -z ${!variable+x} ]]; then   # indirect expansion here
         if [ -z $value ]; then
-            echo "ERROR: $variable not set";
+            echo "ERROR: $variable not set" 1>&2
             exit 1
         fi
     done
@@ -52,7 +52,7 @@ check_sudo() {
 
 check_ena_ssh() {
     if [ -z "$ENA_SSH_USER" ]; then
-        echo "To query or download files from the ENA server using ssh you need to set the environment variable ENA_SSH_USER. This is a user to which you can sudo, and which can SSH to $ENA_SSH_HOST and retrieve files from $ENA_SSH_ROOT_DIR." 1>&2
+        echo "ERROR: To query or download files from the ENA server using ssh you need to set the environment variable ENA_SSH_USER. This is a user to which you can sudo, and which can SSH to $ENA_SSH_HOST and retrieve files from $ENA_SSH_ROOT_DIR." 1>&2
         return 1
     else
         return 0
@@ -98,7 +98,7 @@ validate_ena_ssh_path() {
     if [ $? -eq 0 ]; then
         return 0
     else
-        echo "${enaFile} not present on ${ENA_SSH_HOST}"
+        echo "ERROR: ${enaFile} not present on ${ENA_SSH_HOST}" 1>&2
         return 1
     fi
 }
@@ -115,7 +115,7 @@ link_local_file() {
     if [ -e "$sourceFile" ]; then
         ln -s $sourceFile $destFile
     else
-        echo "Local file $sourceFile does not exist" 1>&2
+        echo "ERROR: Local file $sourceFile does not exist" 1>&2
         return 1
     fi
 }
@@ -151,7 +151,7 @@ file_age() {
     elif [ "$units" == 'mins' ]; then
         echo $(bc -l <<< "scale=2; $ageInNanos / 1000000000/ 60")
     else
-        echo "Invalid unit '$units'"
+        echo "ERROR: Invalid unit '$units'" 1>&2
         return 1
     fi
 }
@@ -262,11 +262,61 @@ fetch_file_by_wget() {
     done
     
     if [ $process_status -ne 0 ] || [ ! -s ${destFile}.tmp ] ; then
-        echo "Failed to retrieve $enaPath to ${destFile}" >&2
+        echo "ERROR: Failed to retrieve $enaPath to ${destFile}" 1>&2
         return 1
     else
         mv $destFile.tmp $destFile
     fi
+}
+
+# Run a command/function in a time-limited fashion
+
+function run_timed_cmd { 
+    local cmd=$1 
+    local timeout=$2
+   
+    echo "Running: \"$cmd\", timing out after $timeout seconds"
+ 
+    $cmd &
+    local pid=$!
+
+    # Test for immediate failure, then wait the timeout
+
+    local slept=0
+
+    for sleep in $(seq 1 $timeout); do
+        sleep 1
+        
+        kill -0 "$pid" 
+
+        # Process still running - kill it at the timeout
+
+        if [ $? -eq 0 ]; then
+            if [ "$sleep" -eq $timeout ]; then
+
+                # For some reason the below doesn't always work, so kill child
+                # processes explicitly first
+
+                pgrep -P $pid | while read -r l; do
+                    echo "Killing $l"
+                    kill -9 $l
+                    echo "Waiting until $l dies... "
+                    wait $l
+                done
+
+                echo "Killing $pid"
+                kill -9 $pid
+                return 42
+            fi
+
+        # Process not still running - use wait to collect its exit code
+
+        else 
+            wait $pid
+            return $?
+        fi  
+
+    done
 }
 
 # Probe available ENA download methods and determine response times
@@ -275,28 +325,44 @@ probe_ena_methods() {
 
     local tempdir=$(get_temp_dir)
     local probe_file=$tempdir/fastq_provider.probe
-    echo -e "method\tresult\tstatus\telapsed_time\tdownload_speed" >> ${probe_file}.tmp
+    echo -e "method\tresult\tstatus\telapsed_time\tdownload_speed" > ${probe_file}.tmp
 
     export NOPROBE=1
 
     for method in http ftp ssh; do
         echo "Testing method $method..."
+
+        local testOutput=$tempdir/${method}_test.fq.gz
+        rm -f $testOutput ${testOutput}.tmp 
+
         local function="fetch_file_from_ena_over_$method"
         local start_time=$SECONDS
-        $function $ENA_TEST_FILE $tempdir/temp.fq.gz
+        run_timed_cmd "$function $ENA_TEST_FILE $testOutput 1" 30 > /dev/null 2>&1 
         local status=$?
         local elapsed_time=$(($SECONDS - $start_time))
-    
+                
+        # A timeout means it was probably downloading, if slowly
+        
         local result=success
         local download_speed=NA
-        if [ "$status" -ne 0 ]; then
+    
+        if [ "$status" -eq 42 ]; then
+            echo "WARNING: Killed download process, taking too long"i 1>&2
+            if [ -e ${testOutput}.tmp ]; then
+                mv ${testOutput}.tmp $testOutput
+            else
+                result=failure
+            fi
+        elif [ "$status" -ne 0 ]; then
             result=failure
-        else
-            local test_file_size=$(stat --printf="%s" $tempdir/temp.fq.gz)
+        fi
+
+        if [ "$result" == 'success' ]; then
+            local test_file_size=$(stat --printf="%s" $testOutput)
             download_speed=$(bc -l <<< "scale=2; $test_file_size / 1000000 / $elapsed_time")
         fi
         echo -e "$method\t$result\t$status\t$elapsed_time\t$download_speed" >> ${probe_file}.tmp
-        rm -f $tempdir/temp.fq.gz
+        rm -f $testOutput
     done    
 
     export NOPROBE=
@@ -341,6 +407,8 @@ check_ena_method() {
 
     if [ -z "$NOPROBE" ]; then
         update_ena_probe
+    else
+        return 0
     fi
 
     if [ -e "$probe_file" ]; then
@@ -406,7 +474,7 @@ fetch_file_from_ena_auto() {
     local methods=$(select_ena_download_method)
 
     if [ $? -ne 0 ]; then
-        echo "No ENA download methods available"
+        echo "ERROR: No ENA download methods available" 1>&2
         return 3
     fi
 
@@ -420,7 +488,7 @@ fetch_file_from_ena_auto() {
             if [ $response -eq 0 ]; then 
                 break 2
             else 
-                echo "Failed to retrieve $enaFile using method $method, attempt $i"
+                echo "WARNING: Failed to retrieve $enaFile using method $method, attempt $i" 1>&2
             fi
         done    
     done
@@ -482,7 +550,7 @@ fetch_file_from_ena_over_ssh() {
         
         wait_and_record 'ena_ssh'
     
-        $sudoString rsync -ssh -avc ${ENA_SSH_HOST}:$enaPath ${destFile}.tmp > /dev/null
+        $sudoString rsync -ssh --inplace -avc ${ENA_SSH_HOST}:$enaPath ${destFile}.tmp > /dev/null
         if [ $? -eq 0 ]; then
             process_status=0
             break
@@ -490,7 +558,7 @@ fetch_file_from_ena_over_ssh() {
     done    
 
     if [ $process_status -ne 0 ] || [ ! -s ${destFile}.tmp ] ; then
-        echo "Failed to retrieve $enaPath to ${destFile}" >&2
+        echo "ERROR: Failed to retrieve $enaPath to ${destFile}" 1>&2
         return 1
     fi
 
@@ -547,7 +615,7 @@ convert_ena_fastq_to_ssh_path(){
     local fastq=$(basename $fastq)
     if [ "$status" == 'private' ]; then
         if [ "$library" == '' ]; then
-            echo "For private FASTQ files, the library cannot be inferred from the file name and must be specified" 1>&2
+            echo "ERROR: For private FASTQ files, the library cannot be inferred from the file name and must be specified" 1>&2
             return 1
         fi 
     else
@@ -594,7 +662,7 @@ validate_url(){
     response=$?
 
     if [ $? -ne 0 ]; then
-        echo "URI $1 is invalid" 1>&2
+        echo "ERROR: URI $1 is invalid" 1>&2
         return $response
     else 
         echo "Link $1 valid"
@@ -643,7 +711,7 @@ fetch_library_files_from_ena() {
     local library=$1
     local outputDir=$2
     local retries=${3:-3}
-    local method=${4:-'ssh'}
+    local method=${4:-'auto'}
     local status=${5:-'public'}
 
     check_variables 'library'
@@ -663,5 +731,29 @@ fetch_library_files_from_ena() {
         fi
 
         $fetchMethod $l $outputDir/$fileName $retries $library $status
-    done
+        local returnCode=$?
+        if [ $returnCode -ne 0 ]; then
+            return $returnCode
+        fi
+    done 
 }
+
+# Guess the origin of a file
+
+guess_file_source() {
+    local sourceFile=$1
+    
+    check_variables 'sourceFile'
+ 
+    local fileSource='unknown'
+
+    echo $(basename $sourceFile) | grep "[EDS]RR[0-9]*" > /dev/null
+    if [ $? -eq 0 ]; then
+        fileSource='ena'
+    else
+        echo "Cannot automatically determine source for $sourceFile" 1>&2
+    fi
+    
+    echo $fileSource
+}
+
