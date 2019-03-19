@@ -261,20 +261,23 @@ fetch_file_by_wget() {
     local retries=${3:-3}
     local method=${4:-''}
     local source=${5:-''}
+    local validateOnly={6:''}
 
     check_variables "sourceFile" "destFile"
-    
-    # Check destination file not already present
-
-    if [ -e "$destFile" ]; then
-        return 2
-    fi
     
     # Check that the URI is valid
 
     validate_url $sourceFile
     if [ $? -ne 0 ]; then
         return 5
+    elif [ -n "$validateOnly" ]; then
+        return 0
+    fi
+    
+    # Check destination file not already present
+
+    if [ -e "$destFile" ]; then
+        return 2
     fi
 
     # If the source is $ENA, check the method is currently working 
@@ -544,14 +547,9 @@ fetch_file_from_ena_over_ssh() {
     local retries=${3:-3}
     local library=${4:-''}
     local status=${5:-'public'}
+    local validateOnly={6:''}
 
     check_variables "enaFile" "destFile"
-
-    # Check destination file not already present
-
-    if [ -e "$destFile" ]; then
-        return 2
-    fi
 
     check_ena_ssh
 
@@ -573,13 +571,30 @@ fetch_file_from_ena_over_ssh() {
 
     # Check file is present at specified location    
     validate_ena_ssh_path $enaPath    
-    if [ $? -ne 0 ]; then return 5; fi
+    if [ $? -ne 0 ]; then 
+        return 5 
+    elif [ -n "$validateOnly" ]; then
+        return 0
+    fi
+    
+    # Check destination file not already present
+
+    if [ -e "$destFile" ]; then
+        return 2
+    fi
     
     # Make destination group-writable if we need to sudo
     
+    local sshTempFile=${destfile}.tmp
+
     if [ "$sudoString" != '' ]; then
-        chmod g+w $(dirname ${destFile})
+        local sshTempDir=${FASTQ_PROVIDER_TEMPDIR}/ssh
+        mkdir -p $sshTempDir
+        chmod a+rwx $sshTempDir
+        sshTempFile=$sshTempDir/$(basename ${destFile}).tmp
     fi
+    
+    rm -f $sshTempFile
 
     echo "Downloading remote file $enaPath to $destFile over SSH"
     
@@ -592,14 +607,14 @@ fetch_file_from_ena_over_ssh() {
         
         wait_and_record 'ena_ssh'
     
-        $sudoString rsync -ssh --inplace -avc ${ENA_SSH_HOST}:$enaPath ${destFile}.tmp > /dev/null
+        $sudoString rsync -ssh --inplace -avc ${ENA_SSH_HOST}:$enaPath $sshTempFile > /dev/null
         if [ $? -eq 0 ]; then
             process_status=0
             break
         fi
     done    
 
-    if [ $process_status -ne 0 ] || [ ! -s ${destFile}.tmp ] ; then
+    if [ $process_status -ne 0 ] || [ ! -s ${sshTempFile} ] ; then
         echo "ERROR: Failed to retrieve $enaPath to ${destFile}" 1>&2
         return 1
     fi
@@ -607,11 +622,11 @@ fetch_file_from_ena_over_ssh() {
     # Move or copy files to final locations
 
     if [ "$sudoString" != '' ]; then
-        $sudoString chmod a+r ${destFile}.tmp
-        cp ${destFile}.tmp ${destFile}
-        $sudoString rm -f ${destFile}.tmp
+        $sudoString chmod a+r ${sshTempFile}
+        cp ${sshTempFile} ${destFile}
+        $sudoString rm -f ${sshTempFile}
     else
-        mv ${destFile}.tmp ${destFile}
+        mv ${sshTempFile} ${destFile}
     fi
     
     return 0

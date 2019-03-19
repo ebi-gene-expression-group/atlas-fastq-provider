@@ -1,6 +1,6 @@
 #!/usr/bin/env bash 
 
-usage() { echo "Usage: $0 [-f <file or uri>] [-t <target file>] [-s <source resource or directory, default 'auto'>] [-m <retrieval method, default 'wget'>] [-p <public or private, default public>] [-l <library, by default inferred from file name>] [-c <config file to override defaults>]" 1>&2; }
+usage() { echo "Usage: $0 [-f <file or uri>] [-t <target file>] [-s <source resource or directory, default 'auto'>] [-m <retrieval method, default 'wget'>] [-p <public or private, default public>] [-l <library, by default inferred from file name>] [-c <config file to override defaults>] [-v <validate only, don't download>]" 1>&2; }
 
 # Parse arguments
 
@@ -8,8 +8,9 @@ s=auto
 m=auto
 p=public
 l=
+v=
 
-while getopts ":f:t:s:m:p:l:c:" o; do
+while getopts ":f:t:s:m:p:l:c:v:" o; do
     case "${o}" in
         f)
             f=${OPTARG}
@@ -31,6 +32,9 @@ while getopts ":f:t:s:m:p:l:c:" o; do
             ;;
         c)
             c=${OPTARG}
+            ;;
+        v)
+            v=${OPTARG}
             ;;
         *)
             usage
@@ -59,6 +63,7 @@ method=$m
 status=$p
 library=$l
 configFile=$c
+validateOnly=$v
 
 if [ ! -z "$configFile" ]; then
     source $configFile
@@ -66,13 +71,18 @@ fi
 
 # For 'auto', guess the file source in case we need it
 
-if [ "$fileSource" == 'auto' ]; then
+if [ "$fileSource" == 'auto' ] && [ "$status" != 'private' ]; then
     fileSource=$(guess_file_source $file_or_uri)
 fi
 
-# Guess the method when set to 'auto'
+# Guess the method when set to 'auto', set to SSH for private
 
-if [ "$method" == 'auto' ]; then
+if [ "$status" == 'private' ]; then 
+
+    method='ena_ssh'
+    fileSource='ena'
+
+elif [ "$method" == 'auto' ]; then
 
     if [ "$fileSource" == 'ena' ]; then
         method='ena_auto'
@@ -144,10 +154,17 @@ fi
 
 # Return status 
 
+action='download'
+actioned='downloaed'
+if [ -n "$validateOnly" ]; then
+    action='validate'
+    actioned='validated'
+fi
+
 if [ $fetch_status -eq 0 ]; then
-    echo "Successfully downloaded $file_or_uri from $fileSource with $method"
+    echo "Successfully ${actioned} $file_or_uri from $fileSource with $method"
 else
-    echo -n "Failed to download $file_or_uri from $fileSource with $method: " 1>&2
+    echo -n "Failed to $action $file_or_uri from $fileSource with $method: " 1>&2
     if [ $fetch_status -eq 2 ]; then
         echo "file already exists" 1>&2
     elif [ $fetch_status -eq 3 ]; then
