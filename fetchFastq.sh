@@ -155,7 +155,7 @@ fi
 # Return status 
 
 action='download'
-actioned='downloaed'
+actioned='downloaded'
 if [ -n "$validateOnly" ]; then
     action='validate'
     actioned='validated'
