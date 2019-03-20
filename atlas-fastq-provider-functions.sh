@@ -261,7 +261,7 @@ fetch_file_by_wget() {
     local retries=${3:-3}
     local method=${4:-''}
     local source=${5:-''}
-    local validateOnly={6:''}
+    local validateOnly=${6:-''}
 
     check_variables "sourceFile" "destFile"
     
@@ -547,7 +547,7 @@ fetch_file_from_ena_over_ssh() {
     local retries=${3:-3}
     local library=${4:-''}
     local status=${5:-'public'}
-    local validateOnly={6:''}
+    local validateOnly=${6:-''}
 
     check_variables "enaFile" "destFile"
 
