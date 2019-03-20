@@ -146,6 +146,7 @@ link_local_dir() {
     
     local sourceDir=$1
     local destDir=$2
+    local library=${3:-''}
 
     # Check source directory exists
  
@@ -157,9 +158,21 @@ link_local_dir() {
     # Convert relative to absolute
      
     mkdir -p $destDir
-    ls $sourceDir | while read -r l; do
-        link_local_file $sourceDir $l $destDir/$l
-    done
+    local dirFiles=$(ls $sourceDir)
+
+    # If library is specified, only link files maching the pattern
+
+    if [ -n "$library" ]; then
+        dirFiles=$(echo -e "$dirFiles" | grep $library)
+    fi
+
+    # Do the linking
+
+    if [ -n "$dirFiles" ]; then
+        echo -e "$dirFiles" | while read -r l; do
+            link_local_file $sourceDir $l $destDir/$l
+        done
+    fi
 }
 
 # Get the current temp dir

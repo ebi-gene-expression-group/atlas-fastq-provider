@@ -62,7 +62,7 @@ if [ ! -z "$configFile" ]; then
 fi
 
 if [ "$method" == 'dir' ]; then
-    link_local_dir "$fileSource" "$outputDir"
+    link_local_dir "$fileSource" "$outputDir" $library
 else
     fetch_library_files_from_ena $library $outputDir $ENA_RETRIES $method $status
 fi
