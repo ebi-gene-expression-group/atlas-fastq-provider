@@ -767,11 +767,22 @@ get_library_listing() {
 
         $sudoString ssh -n ${ENA_SSH_HOST} ls $libDir/*
     elif [ "$method" == 'ftp' ]; then
+        
+        # This must be done in a tempdir, since the listing file cannot be
+        # anything other than '.listing', and we therefore get clashes with
+        # multiple downloads at once         
+
+        local listingDir="${FASTQ_PROVIDER_TEMPDIR}/${library}_listing"
+        mkdir -p $listingDir
+
+        pushd $listingDir
         wget --spider --no-remove-listing $libDir/ > /dev/null 2>&1
         cat .listing | grep -vP "\.\s+$" | awk '{print $NF}' | while read -r l; do
             echo $libDir/$l | sed 's/\r$//' 
         done
-        rm -rf .listing
+        popd $listingDir
+
+        rm -rf $listingDir
     fi
 }
 
