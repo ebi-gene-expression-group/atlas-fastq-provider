@@ -27,17 +27,33 @@ PROBE_UPDATE_FREQ_MINS=15
 ENA_RETRIES=3
 ```
 
-## Generic usage
+Overrides to these variables can also be supplied at runtime (see below).
+
+## Usage
+
+### Individual FASTQ files
 
 ```
-fetchFastq.sh [-f <file or uri>] [-t <target file>] [-s <source resource or directory>] [-m <retrieval method, default 'auto'>] [-p <public or private, default public>] [-l <library, by default inferred from file name>]
+fetchFastq.sh -f <file or uri> -t <target file> [-c <config file to override defaults>] [-s <source resource or directory>] [-m <retrieval method, default 'auto'>] [-p <public or private, default public>] [-l <library, by default inferred from file name>]
 ```
 
-Only the source file (-f) and target (-t) arguments are compulsory. 
+This is a generic utility to provide FASTQ files for use in pipelines etc. At the most basic level files can be downloaded from links, or linked to files in directories on the file system, with some extra sugar to indicate when a file is not present at the source and produce errors consistently etc.  
 
-This is a generic utility to provide FASTQ files for use in pipelines etc. Files can be downloaded from links, or linked to files in directories on the file system. There are 'special cases' where things can be handled differently, for example in fetching files from ENA via SSH or the new HTTP endpoints. The special cases will be triggered based on the source, which if set to 'auto' (the default) will be guessed (e.g. ena for SRR/DRR/ERR identifiers). 
+There are then 'special cases' where things can be handled differently, for example in fetching files from ENA via SSH or the new HTTP endpoint. The special cases will be triggered based on the source, which if set to 'auto' (the default) will be guessed (e.g. ena for SRR/DRR/ERR identifiers). 
 
 For the ENA, there are three methods: FTP, SSH and HTTP. FTP is the default method that will work for everyone. EBI personal with the right privileges can also copy files over SSH directly from the ENA servers. There is also a new internal HTTP endpoint (currently unreliable) that can be used by EBI personnel. Specifying 'auto' will test each of these methods and select the fastest, storing results in a 'probe' file. This file will be updated according to the interval specified in the confi variable PROBE_UPDATE_FREQ_MINS.
+
+### All files for an ENA library/ run:
+
+```
+fetchEnaLibraryFastqs.sh -l <library, by default inferred from file name> -d <output directory> [-m <retrieval method, default 'wget'>] [-s <source directory for method 'dir'>] [-p <public or private, default public>] [-c <config file to override defaults>]
+```
+
+This is mostly a wrapper for fetchFastq.sh, following a listing of files at the source. 
+
+### Validation only
+
+Sometimes it's useful to check that a file exists at source, without actually downloading it. This can can be done by supplying '-v' to fetchFastq.sh, which will cause the script to return an exit code of 0 after the file existence is checked, but before download.
 
 ## Examples
 
@@ -77,4 +93,10 @@ Note that the library name must also be specified.
 
 ```
 fetchFastq.sh -f ERR1888646_1.fastq.gz -t ERR1888646_1.fastq.gz -s /path/to/dir
+```
+
+### Download all files from an ENA library
+
+```
+fetchEnaLibraryFastqs.sh -l ERR1888646 -d ERR1888646
 ```
