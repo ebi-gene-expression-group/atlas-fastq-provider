@@ -417,7 +417,7 @@ probe_ena_methods() {
         local download_speed=NA
     
         if [ "$status" -eq 42 ]; then
-            echo "WARNING: Killed download process, taking too long"i 1>&2
+            echo "WARNING: Killed download process, taking too long" 1>&2
             if [ -e ${testOutput}.tmp ]; then
                 mv ${testOutput}.tmp $testOutput
             else
