@@ -12,8 +12,11 @@ get_library_path() {
     local prefix=
     if ! [[ $subDir =~ "ENC" ]] && [[ -z "$forceShortForm" ]] ; then
         local num=${library:3}
-        if [ $num -gt 1000000 ]; then
-            prefix="00${library:9}/"
+        
+        if [[ "$num" =~ ^[0-9]+$ ]]; then
+            if [ $num -gt 1000000 ]; then
+                prefix="00${library:9}/"
+            fi
         fi 
     fi
     echo "${rootDir}/${subDir}/${prefix}${library}/${library}"
@@ -63,10 +66,16 @@ check_ena_ssh() {
 
 fetch_ena_sudo_string() {
 
+    check_ena_ssh
+
+    if [ $? -eq 1 ]; then
+        return 6
+    fi 
+    
     # Check if we need to sudo, and if we can
 
     currentUser=$(whoami)
-    if [ $currentUser != $ENA_SSH_USER ]; then
+    if [ $currentUser != "$ENA_SSH_USER" ]; then
         check_sudo $ENA_SSH_USER
         if [ $? -ne 0 ]; then return 1; fi
         sudoString="sudo -u $ENA_SSH_USER "
@@ -85,8 +94,11 @@ fetch_ena_sudo_string() {
 validate_ena_ssh_path() {
     local enaFile=$1
 
+    local sudoString=
     sudoString=$(fetch_ena_sudo_string)
-    if [ $? -ne 0 ]; then return 1; fi
+    if [ $? -ne 0 ]; then 
+        return 1; 
+    fi
     
     check_ena_ssh
 
@@ -388,7 +400,7 @@ probe_ena_methods() {
     export NOPROBE=1
 
     for method in http ftp ssh; do
-        echo "Testing method $method..."
+        echo "Testing method $method..." 1>&2
 
         local testOutput=$tempdir/${method}_test.fq.gz
         rm -f $testOutput ${testOutput}.tmp 
@@ -426,7 +438,7 @@ probe_ena_methods() {
     export NOPROBE=
 
     mv ${probe_file}.tmp ${probe_file}
-    echo "ENA retrieval probe results at $tempdir/fastq_provider.probe"
+    echo "ENA retrieval probe results at $tempdir/fastq_provider.probe" 1>&2
 }
 
 # Update the probe if it's got too old
@@ -576,8 +588,11 @@ fetch_file_from_ena_over_ssh() {
     fi
 
     # Check we can sudo to the necessary user
+    local sudoString=
     sudoString=$(fetch_ena_sudo_string)
-    if [ $? -ne 0 ]; then return 4; fi
+    if [ $? -ne 0 ]; then 
+        return 4 
+    fi
 
     # Convert to an ENA path
     enaPath=$(convert_ena_fastq_to_ssh_path $enaFile $status $library)
@@ -760,13 +775,16 @@ get_library_listing() {
     fi
     
     if [ "$method" == 'ssh' ]; then
+        local sudoString=
         sudoString=$(fetch_ena_sudo_string)
-        if [ $? -ne 0 ]; 
-            then return 4; 
-        fi
 
+        if [ $? -ne 0 ]; then 
+            return 4 
+        fi
+        
         $sudoString ssh -n ${ENA_SSH_HOST} ls $libDir/*
-    elif [ "$method" == 'ftp' ]; then
+
+    else
         
         # This must be done in a tempdir, since the listing file cannot be
         # anything other than '.listing', and we therefore get clashes with
@@ -775,13 +793,18 @@ get_library_listing() {
         local listingDir="${FASTQ_PROVIDER_TEMPDIR}/${library}_listing"
         mkdir -p $listingDir
 
-        pushd $listingDir
+        pushd $listingDir > /dev/null
         wget --spider --no-remove-listing $libDir/ > /dev/null 2>&1
+        if [ ! -e .listing ]; then
+            echo "ERROR: no files found at $libDir" 1>&2
+            return 1
+        fi
+
         cat .listing | grep -vP "\.\s+$" | awk '{print $NF}' | while read -r l; do
             echo $libDir/$l | sed 's/\r$//' 
         done
-        popd $listingDir
-
+        popd > /dev/null
+        
         rm -rf $listingDir
     fi
 }
@@ -802,21 +825,30 @@ fetch_library_files_from_ena() {
         listMethod='ssh'
     fi
 
-    get_library_listing $library $listMethod $status | while read -r l; do
-       local fileName=$(basename $l )
-       echo "Downloading file $fileName for $library to $outputDir"
-        if [ $method == 'auto' ]; then
-            fetchMethod='fetch_file_from_ena_auto'
-        else
-            fetchMethod="fetch_file_from_ena_over_$method"
-        fi
+    local libraryListing=
+    libraryListing=$(get_library_listing $library $listMethod $status)
+    local exitCode=$?
 
-        $fetchMethod $l $outputDir/$fileName $retries $library $status
-        local returnCode=$?
-        if [ $returnCode -ne 0 ]; then
-            return $returnCode
-        fi
-    done 
+    if [ $exitCode -ne 0 ]; then
+        return 5
+    else
+        echo -e "$libraryListing" | while read -r l; do
+           local fileName=$(basename $l )
+           echo "Downloading file $fileName for $library to $outputDir"
+            if [ $method == 'auto' ]; then
+                fetchMethod='fetch_file_from_ena_auto'
+            else
+                fetchMethod="fetch_file_from_ena_over_$method"
+            fi
+
+            $fetchMethod $l $outputDir/$fileName $retries $library $status
+            local returnCode=$?
+            if [ $returnCode -ne 0 ]; then
+                return $returnCode
+            fi
+        done 
+
+    fi
 }
 
 # Guess the origin of a file
