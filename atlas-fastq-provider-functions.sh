@@ -598,7 +598,7 @@ fetch_file_from_ena_over_ssh() {
     
     # Make destination group-writable if we need to sudo
     
-    local sshTempFile=${destfile}.tmp
+    local sshTempFile=${destFile}.tmp
 
     if [ "$sudoString" != '' ]; then
         local sshTempDir=${FASTQ_PROVIDER_TEMPDIR}/ssh
