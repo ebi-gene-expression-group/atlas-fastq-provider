@@ -399,7 +399,7 @@ probe_ena_methods() {
 
     export NOPROBE=1
 
-    for method in http ftp ssh; do
+    for method in $ALLOWED_DOWNLOAD_METHODS; do
         echo "Testing method $method..." 1>&2
 
         local testOutput=$tempdir/${method}_test.fq.gz
@@ -513,7 +513,11 @@ select_ena_download_method() {
         if [ "$ordered_methods" == 'None' ]; then
             ordered_methods=$method
         else
-            ordered_methods="$ordered_methods $method"
+            for met in $ALLOWED_DOWNLOAD_METHODS; do
+                if [ "$met" == "$method" ]; then
+                    ordered_methods="$ordered_methods $method"
+                fi
+            done
         fi
     done <<< "$(tail -n +2 $probe_file | awk '$5!="NA"' | sort -k 5,5rn)"
 
