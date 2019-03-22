@@ -361,7 +361,7 @@ function run_timed_cmd {
     for sleep in $(seq 1 $timeout); do
         sleep 1
         
-        kill -0 "$pid" 
+        kill -0 "$pid" > /dev/null 2>&1
 
         # Process still running - kill it at the timeout
 
@@ -428,7 +428,10 @@ probe_ena_methods() {
                 result=failure
             fi
         elif [ "$status" -ne 0 ]; then
+            echo "Failed (status $status)" 1>&2
             result=failure
+        else
+            echo "Success: $method is working"
         fi
 
         if [ "$result" == 'success' ]; then
