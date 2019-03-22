@@ -318,24 +318,28 @@ fetch_file_by_wget() {
 
     echo "Downloading $sourceFile to $destFile using wget"
     mkdir -p $(dirname $destFile)
+
+    local wgetTempFile=${destFile}.tmp
+    rm -f $wgetTempFile
+
     local process_status=1
     for i in $(seq 1 $retries); do 
         if [ "$method" != '' ]; then
             wait_and_record ${source}_$method
         fi
 
-        wget  -nv -c $sourceFile -O $destFile.tmp 
+        wget  -nv -c $sourceFile -O $wgetTempFile 
         if [ $? -eq 0 ]; then
             process_status=0
             break
         fi
     done
     
-    if [ $process_status -ne 0 ] || [ ! -s ${destFile}.tmp ] ; then
+    if [ $process_status -ne 0 ] || [ ! -s $wgetTempFile ] ; then
         echo "ERROR: Failed to retrieve $enaPath to ${destFile}" 1>&2
         return 1
     else
-        mv $destFile.tmp $destFile
+        mv $wgetTempFile $destFile
     fi
 }
 
