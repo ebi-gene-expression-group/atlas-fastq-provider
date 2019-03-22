@@ -337,6 +337,7 @@ fetch_file_by_wget() {
     
     if [ $process_status -ne 0 ] || [ ! -s $wgetTempFile ] ; then
         echo "ERROR: Failed to retrieve $enaPath to ${destFile}" 1>&2
+        rm -f $wgetTempFile 
         return 1
     else
         mv $wgetTempFile $destFile
