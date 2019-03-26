@@ -1,18 +1,19 @@
 #!/usr/bin/env bash 
 
-usage() { echo "Usage: $0 [-c <config file to override defaults>]" 1>&2; }
+usage() { echo "Usage: $0 [-c <config file to override defaults>] [-t <target file>] " 1>&2; }
 
 # Parse arguments
 
-s=auto
-m=wget
-p=public
-l=
+c=
+t=
 
-while getopts ":c:" o; do
+while getopts ":c:t:" o; do
     case "${o}" in
         c)
             c=${OPTARG}
+            ;;
+        t)
+            t=${OPTARG}
             ;;
         *)
             usage
@@ -35,4 +36,4 @@ if [ ! -z "$configFile" ]; then
     source $configFile
 fi
 
-probe_ena_methods
+probe_ena_methods $t

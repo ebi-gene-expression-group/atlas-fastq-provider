@@ -398,8 +398,13 @@ function run_timed_cmd {
 
 probe_ena_methods() {
 
+    local probe_file=${1:-''}
     local tempdir=$(get_temp_dir)
-    local probe_file=$tempdir/fastq_provider.probe
+    
+    if [ -z "$probe_file" ]; then
+        probe_file=$tempdir/fastq_provider.probe
+    fi
+
     echo -e "method\tresult\tstatus\telapsed_time\tdownload_speed" > ${probe_file}.tmp
 
     export NOPROBE=1
@@ -444,9 +449,8 @@ probe_ena_methods() {
     done    
 
     export NOPROBE=
-
     mv ${probe_file}.tmp ${probe_file}
-    echo "ENA retrieval probe results at $tempdir/fastq_provider.probe" 1>&2
+    echo "ENA retrieval probe results at ${probe_file}" 1>&2
 }
 
 # Update the probe if it's got too old
