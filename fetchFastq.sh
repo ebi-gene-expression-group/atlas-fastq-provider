@@ -161,11 +161,13 @@ if [ -n "$validateOnly" ]; then
     actioned='validated'
 fi
 
-if [ $fetch_status -eq 0 ]; then
+if [ $fetch_status -eq 0 ] && [ -s "$target" ]; then
     echo "Successfully ${actioned} $file_or_uri from $fileSource with $method"
 else
     echo -n "Failed to $action $file_or_uri from $fileSource with $method: " 1>&2
-    if [ $fetch_status -eq 2 ]; then
+    if [ $fetch_status -eq 0 ]; then
+        echo "exit status was 0, but $target does not exist"
+    elif [ $fetch_status -eq 2 ]; then
         echo "file already exists" 1>&2
     elif [ $fetch_status -eq 3 ]; then
         echo "$method method not currently working"  1>&2

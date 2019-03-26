@@ -432,7 +432,7 @@ probe_ena_methods() {
             echo "Failed (status $status)" 1>&2
             result=failure
         else
-            echo "Success: $method is working"
+            echo "Success: $method is working" 1>&2
         fi
 
         if [ "$result" == 'success' ]; then
@@ -560,20 +560,24 @@ fetch_file_from_ena_auto() {
         return 3
     fi
 
+    local exitCode=
+
     for i in $(seq 1 $retries); do 
         for method in $methods; do
             echo "Fetching $enaFile using method $method, attempt $i"
             function="fetch_file_from_ena_over_$method"
             $function $enaFile $destFile 1  
             
-            response=$?
-            if [ $response -eq 0 ]; then 
+            exitCode=$?
+            if [ $exitCode -eq 0 ]; then 
                 break 2
             else 
                 echo "WARNING: Failed to retrieve $enaFile using method $method, attempt $i" 1>&2
             fi
         done    
     done
+
+    return $exitCode
 }
 
 # Fetch a file from the ENA to a location
