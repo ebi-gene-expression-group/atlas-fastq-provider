@@ -167,6 +167,7 @@ else
     echo -n "Failed to $action $file_or_uri from $fileSource with $method: " 1>&2
     if [ $fetch_status -eq 0 ]; then
         echo "exit status was 0, but $target does not exist"
+        fetch_status=1
     elif [ $fetch_status -eq 2 ]; then
         echo "file already exists" 1>&2
     elif [ $fetch_status -eq 3 ]; then
