@@ -462,7 +462,6 @@ update_ena_probe() {
     fi
 
     local probe_age=$(file_age $probe_file mins)
-
     if (( $(echo "$probe_age > $PROBE_UPDATE_FREQ_MINS" |bc -l) )); then
         echo "Probe file is older than $PROBE_UPDATE_FREQ_MINS mins (at $probe_age mins), updating" 1>&2
         # Touch to stop other processes from noticing it's out of date
@@ -528,8 +527,8 @@ select_ena_download_method() {
             done
         fi
     done <<< "$(tail -n +2 $probe_file | awk '$5!="NA"' | sort -k 5,5rn)"
-
-    if [ "$ordered_methods" == 'None' ]; then
+    
+    if [ "$ordered_methods" == 'None' ] || [ "$ordered_methods" == '' ]; then
         return 1
     else
         echo $ordered_methods
