@@ -409,44 +409,56 @@ probe_ena_methods() {
 
     export NOPROBE=1
 
-    for method in $ALLOWED_DOWNLOAD_METHODS; do
-        echo "Testing method $method..." 1>&2
+    # If all methods results in NA (not working), try a couple of times more
+    # before giving up
 
-        local testOutput=$tempdir/${method}_test.fq.gz
-        rm -f $testOutput ${testOutput}.tmp 
-
-        local function="fetch_file_from_ena_over_$method"
-        local start_time=$SECONDS
-        run_timed_cmd "$function $ENA_TEST_FILE $testOutput 1" 30 > /dev/null 2>&1 
-        local status=$?
-        local elapsed_time=$(($SECONDS - $start_time))
-                
-        # A timeout means it was probably downloading, if slowly
-        
-        local result=success
-        local download_speed=NA
+    local have_working_method=0
     
-        if [ "$status" -eq 42 ]; then
-            echo "WARNING: Killed download process, taking too long" 1>&2
-            if [ -e ${testOutput}.tmp ]; then
-                mv ${testOutput}.tmp $testOutput
-            else
-                result=failure
-            fi
-        elif [ "$status" -ne 0 ]; then
-            echo "Failed (status $status)" 1>&2
-            result=failure
-        else
-            echo "Success: $method is working" 1>&2
-        fi
+    for try in 1 2 3; do
+        for method in $ALLOWED_DOWNLOAD_METHODS; do
+            echo "Testing method $method for ${try}th time..." 1>&2
 
-        if [ "$result" == 'success' ]; then
-            local test_file_size=$(stat --printf="%s" $testOutput)
-            download_speed=$(bc -l <<< "scale=2; $test_file_size / 1000000 / $elapsed_time")
-        fi
-        echo -e "$method\t$result\t$status\t$elapsed_time\t$download_speed" >> ${probe_file}.tmp
-        rm -f $testOutput
-    done    
+            local testOutput=$tempdir/${method}_test.fq.gz
+            rm -f $testOutput ${testOutput}.tmp 
+
+            local function="fetch_file_from_ena_over_$method"
+            local start_time=$SECONDS
+            run_timed_cmd "$function $ENA_TEST_FILE $testOutput 1" 30 > /dev/null 2>&1 
+            local status=$?
+            local elapsed_time=$(($SECONDS - $start_time))
+                    
+            # A timeout means it was probably downloading, if slowly
+            
+            local result=success
+            local download_speed=NA
+        
+            if [ "$status" -eq 42 ]; then
+                echo "WARNING: Killed download process, taking too long" 1>&2
+                if [ -e ${testOutput}.tmp ]; then
+                    mv ${testOutput}.tmp $testOutput
+                else
+                    result=failure
+                fi
+            elif [ "$status" -ne 0 ]; then
+                echo "Failed (status $status)" 1>&2
+                result=failure
+            else
+                echo "Success: $method is working" 1>&2
+                have_working_method=1
+            fi
+
+            if [ "$result" == 'success' ]; then
+                local test_file_size=$(stat --printf="%s" $testOutput)
+                download_speed=$(bc -l <<< "scale=2; $test_file_size / 1000000 / $elapsed_time")
+            fi
+            echo -e "$method\t$result\t$status\t$elapsed_time\t$download_speed" >> ${probe_file}.tmp
+            rm -f $testOutput
+        done
+
+        if [ $have_working_method -eq 1 ]; then
+            break
+        fi 
+    done   
 
     export NOPROBE=
     mv ${probe_file}.tmp ${probe_file}
