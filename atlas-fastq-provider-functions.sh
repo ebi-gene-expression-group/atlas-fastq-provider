@@ -774,14 +774,19 @@ convert_ena_fastq_to_uri() {
 
 validate_url(){
 
-    wget -q -S --spider $1 > /dev/null 2>&1
-    response=$?
+    local response=
 
-    if [ $? -ne 0 ]; then
+    response=$(wget -S --spider $1 2>&1)
+    local returnCode=$?
+
+    echo $response | grep -i "no such file" > /dev/null 2>&1
+
+    if [ $? -eq 0 ]; then
         echo "ERROR: URI $1 is invalid" 1>&2
-        return $response
-    else 
-        echo "Link $1 valid"
+        return $returnCode
+    else
+        echo $response | grep -i "exists" > /dev/null 2>&1
+        echo "URI $1 is valid"
     fi
 }
 
