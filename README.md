@@ -46,7 +46,7 @@ For the ENA, there are three methods: FTP, SSH and HTTP. FTP is the default meth
 ### All files for an ENA library/ run:
 
 ```
-fetchEnaLibraryFastqs.sh -l <library, by default inferred from file name> -d <output directory> [-m <retrieval method, default 'wget'>] [-s <source directory for method 'dir'>] [-p <public or private, default public>] [-c <config file to override defaults>]
+fetchEnaLibraryFastqs.sh -l <library> -d <output directory> [-m <retrieval method, default 'auto'>] [-s <source directory for method 'dir'>] [-p <public or private, default public>] [-c <config file to override defaults>]
 ```
 
 This is mostly a wrapper for fetchFastq.sh, following a listing of files at the source. 
