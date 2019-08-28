@@ -71,8 +71,12 @@ fi
 
 # For 'auto', guess the file source in case we need it
 
-if [ "$fileSource" == 'auto' ] && [ "$status" != 'private' ]; then
-    fileSource=$(guess_file_source $file_or_uri)
+guessedSource=$(guess_file_source $file_or_uri)
+
+# If source is determined as HCA allow it to override specified method
+
+if [[  "$guessedSource" == 'hca' || ( "$fileSource" == 'auto' && "$status" != 'private' ) ]]; then
+    fileSource=$guessedSource
 fi
 
 # Guess the method when set to 'auto', set to SSH for private
@@ -82,14 +86,15 @@ if [ "$status" == 'private' ]; then
     method='ena_ssh'
     fileSource='ena'
 
+elif [ "$fileSource" == 'hca' ]; then
+
+    method='hca'
+
 elif [ "$method" == 'auto' ]; then
 
     if [ "$fileSource" == 'ena' ]; then
         method='ena_auto'
 
-    elif [ "$fileSource" == 'hca' ]; then
-       method='hca'
-    
     elif [ -d "$fileSource" ]; then
         method='dir'
 
