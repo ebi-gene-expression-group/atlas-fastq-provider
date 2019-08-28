@@ -100,3 +100,25 @@ fetchFastq.sh -f ERR1888646_1.fastq.gz -t ERR1888646_1.fastq.gz -s /path/to/dir
 ```
 fetchEnaLibraryFastqs.sh -l ERR1888646 -d ERR1888646
 ```
+
+### Download file from HCA
+
+Files from the HCA can be downloaded given pseudo-URI formed like:
+
+```
+fetchFastq.sh -f hca://<bundle>/<bundle version>/<file> -t <dest file>
+```
+
+... or by manually specifying method like:
+
+```
+fetchFastq.sh -m hca -f <bundle>/<bundle version>/<file> -t <dest file>
+```
+
+This just passes the bundle UUID and version, along with the file filter, to the [hca client](https://pypi.org/project/hca/) (where installed).
+
+A real example is:
+
+```
+fetchFastq.sh -f hca://0359ab85-bb92-4e6e-a819-12aa734ed12b/2019-07-12T135804.102000Z/10X127_1_S28_L001_I1_001.fastq.gz -t foo.fastq.gz
+```
