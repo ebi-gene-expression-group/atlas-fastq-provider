@@ -86,6 +86,9 @@ elif [ "$method" == 'auto' ]; then
 
     if [ "$fileSource" == 'ena' ]; then
         method='ena_auto'
+
+    elif [ "$fileSource" == 'hca' ]; then
+       method='hca'
     
     elif [ -d "$fileSource" ]; then
         method='dir'
@@ -117,7 +120,11 @@ fi
 
 fetch_status=
 
-if [ "$method" == 'wget' ]; then
+if [ "$method" == 'hca' ]; then
+    fetch_file_by_hca $file_or_uri $target
+    fetch_status=$?
+
+elif [ "$method" == 'wget' ]; then
     fetch_file_by_wget $file_or_uri $target
     fetch_status=$?    
 
@@ -180,6 +187,8 @@ else
         echo "ENA_SSH_USER, can't use SSH"  1>&2
     elif [ $fetch_status -eq 7 ]; then
         echo "$fileSource is not a directory"  1>&2
+    elif [ $fetch_status -eq 8 ]; then
+        echo "Probable malformed HCA command" 1>&2
     else
         echo "download failed"  1>&2
     fi

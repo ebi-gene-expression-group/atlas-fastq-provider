@@ -344,6 +344,32 @@ fetch_file_by_wget() {
     fi
 }
 
+# Fetch file using the HCA client
+
+function fetch_file_by_hca {
+    local sourceFile=$1
+    local destFile=$2
+
+    sourceFile="${sourceFile#hca://}"
+    local sourceFileName=$(basename $sourceFile)
+
+    local uuid=$(echo $sourceFile | awk -F'/' '{print $1}')
+    local version=$(echo $sourceFile | awk -F'/' '{print $2}')
+
+    local exitcode=
+    hca dss download --bundle-uuid $uuid --version $version --download-dir . --replica aws --no-metadata --data-filter $sourceFileName
+    exitCode=$?
+    
+    if [ $exitCode -ne 0 ]; then
+        exitCode= 8
+    else
+        mv ${uuid}.${version}/$sourceFileName $destFile
+    fi
+        
+    rm -rf ${uuid}.${version} .hca
+    return $exitCode
+}
+
 # Run a command/function in a time-limited fashion
 
 function run_timed_cmd { 
@@ -900,7 +926,12 @@ guess_file_source() {
     if [ $? -eq 0 ]; then
         fileSource='ena'
     else
-        echo "Cannot automatically determine source for $sourceFile" 1>&2
+        echo $sourceFile | grep "^hca:" > /dev/null
+        if [ $? -eq 0 ]; then
+            fileSource='hca'
+        else
+            echo "Cannot automatically determine source for $sourceFile" 1>&2
+        fi
     fi
     
     echo $fileSource
