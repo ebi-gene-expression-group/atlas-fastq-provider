@@ -351,6 +351,7 @@ function fetch_file_by_hca {
     local destFile=$2
 
     sourceFile="${sourceFile#hca://}"
+    sourceFile="${sourceFile#hca/}"
     local sourceFileName=$(basename $sourceFile)
 
     local uuid=$(echo $sourceFile | awk -F'/' '{print $1}')
@@ -926,7 +927,7 @@ guess_file_source() {
     if [ $? -eq 0 ]; then
         fileSource='ena'
     else
-        echo $sourceFile | grep "^hca:" > /dev/null
+        echo $sourceFile | grep -E "^(hca:|hca/)" > /dev/null
         if [ $? -eq 0 ]; then
             fileSource='hca'
         else
