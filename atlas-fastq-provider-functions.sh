@@ -595,7 +595,8 @@ fetch_file_from_ena_auto() {
         return 2
     fi
 
-    local methods=$(select_ena_download_method)
+    local methods=
+    methods=$(select_ena_download_method)
 
     if [ $? -ne 0 ]; then
         echo "ERROR: No ENA download methods available" 1>&2
