@@ -173,7 +173,7 @@ if [ -n "$validateOnly" ]; then
     actioned='validated'
 fi
 
-if [ $fetch_status -eq 0 ] && [ -s "$target" ]; then
+if [[ $fetch_status -eq 0  && ( -s "$target" ||  -n "$validateOnly" ) ]]; then
     echo "Successfully ${actioned} $file_or_uri from $fileSource with $method"
 else
     echo -n "Failed to $action $file_or_uri from $fileSource with $method: " 1>&2
