@@ -139,19 +139,19 @@ elif [ "$method" == 'dir' ]; then
 
 elif [ "$method" == 'ena_ssh' ]; then
     # Use an SSH connection to retrieve the file
-    fetch_file_from_ena_over_ssh $file_or_uri $target $ENA_RETRIES $library $status 
+    fetch_file_from_ena_over_ssh $file_or_uri $target $ENA_RETRIES $library "$validateOnly" $status
     fetch_status=$?    
 
 elif [ "$method" == 'ena_http' ]; then
     
     # Use the HTTP endpoint to get the file
-    fetch_file_from_ena_over_http $file_or_uri $target $ENA_RETRIES $library
+    fetch_file_from_ena_over_http $file_or_uri $target $ENA_RETRIES $library "$validateOnly"
     fetch_status=$?    
 
 elif [ "$method" == 'ena_ftp' ]; then
     
     # Use the FTP wget to get the file
-    fetch_file_from_ena_over_ftp $file_or_uri $target $ENA_RETRIES $library
+    fetch_file_from_ena_over_ftp $file_or_uri $target $ENA_RETRIES $library "$validateOnly"
     fetch_status=$?    
 
 elif [ "$method" == 'ena_auto' ]; then

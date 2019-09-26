@@ -586,6 +586,7 @@ fetch_file_from_ena_auto() {
     local destFile=$2
     local retries=${3:-3}
     local library=${4:-''}
+    local validateOnly=${5:-''}
 
     check_variables "enaFile" "destFile"
     
@@ -609,7 +610,7 @@ fetch_file_from_ena_auto() {
         for method in $methods; do
             echo "Fetching $enaFile using method $method, attempt $i"
             function="fetch_file_from_ena_over_$method"
-            $function $enaFile $destFile 1  
+            $function $enaFile $destFile 1 "$library" "$validateOnly" 
             
             exitCode=$?
             if [ $exitCode -eq 0 ]; then 
@@ -630,8 +631,8 @@ fetch_file_from_ena_over_ssh() {
     local destFile=$2
     local retries=${3:-3}
     local library=${4:-''}
-    local status=${5:-'public'}
-    local validateOnly=${6:-''}
+    local validateOnly=${5:-''}
+    local status=${6:-'public'}
 
     check_variables "enaFile" "destFile"
 
@@ -724,6 +725,7 @@ fetch_file_from_ena_over_http() {
     local destFile=$2
     local retries=${3:-3}
     local library=${4:-''}
+    local validateOnly=${5:-''}
 
     check_variables "enaFile" "destFile"
 
@@ -731,7 +733,7 @@ fetch_file_from_ena_over_http() {
     local enaPath=$(convert_ena_fastq_to_uri $enaFile http $library)
     
     # Fetch
-    fetch_file_by_wget $enaPath $destFile $retries http ena
+    fetch_file_by_wget $enaPath $destFile $retries http ena $validateOnly
 }
 
 fetch_file_from_ena_over_ftp() {
@@ -739,6 +741,7 @@ fetch_file_from_ena_over_ftp() {
     local destFile=$2
     local retries=${3:-3}
     local library=${4:-''}
+    local validateOnly=${5:-''}
 
     check_variables "enaFile" "destFile"
     
@@ -746,7 +749,7 @@ fetch_file_from_ena_over_ftp() {
     local enaPath=$(convert_ena_fastq_to_uri $enaFile ftp $library)
 
     # Fetch
-    fetch_file_by_wget $enaPath $destFile $retries ftp ena
+    fetch_file_by_wget $enaPath $destFile $retries ftp ena $validateOnly
 }
 
 # Convert an SRA-style file to its path on the ENA node 
@@ -905,7 +908,7 @@ fetch_library_files_from_ena() {
                 fetchMethod="fetch_file_from_ena_over_$method"
             fi
 
-            $fetchMethod $l $outputDir/$fileName $retries $library $status
+            $fetchMethod $l $outputDir/$fileName $retries $library "" $status
             local returnCode=$?
             if [ $returnCode -ne 0 ]; then
                 return $returnCode
