@@ -139,25 +139,25 @@ elif [ "$method" == 'dir' ]; then
 
 elif [ "$method" == 'ena_ssh' ]; then
     # Use an SSH connection to retrieve the file
-    fetch_file_from_ena_over_ssh $file_or_uri $target $ENA_RETRIES $library $status 
+    fetch_file_from_ena_over_ssh $file_or_uri $target $ENA_RETRIES $library "$validateOnly" $status
     fetch_status=$?    
 
 elif [ "$method" == 'ena_http' ]; then
     
     # Use the HTTP endpoint to get the file
-    fetch_file_from_ena_over_http $file_or_uri $target $ENA_RETRIES $library
+    fetch_file_from_ena_over_http $file_or_uri $target $ENA_RETRIES $library "$validateOnly"
     fetch_status=$?    
 
 elif [ "$method" == 'ena_ftp' ]; then
     
     # Use the FTP wget to get the file
-    fetch_file_from_ena_over_ftp $file_or_uri $target $ENA_RETRIES $library
+    fetch_file_from_ena_over_ftp $file_or_uri $target $ENA_RETRIES $library "$validateOnly"
     fetch_status=$?    
 
 elif [ "$method" == 'ena_auto' ]; then
     
     # Auto-select the ENA method get the file
-    fetch_file_from_ena_auto $file_or_uri $target $ENA_RETRIES
+    fetch_file_from_ena_auto $file_or_uri $target $ENA_RETRIES "$library" "$validateOnly"
     fetch_status=$?    
 else
     echo "Don't know how to get $file_or_uri from $fileSource with $method" 1>&2
@@ -173,7 +173,7 @@ if [ -n "$validateOnly" ]; then
     actioned='validated'
 fi
 
-if [ $fetch_status -eq 0 ] && [ -s "$target" ]; then
+if [[ $fetch_status -eq 0  && ( -s "$target" ||  -n "$validateOnly" ) ]]; then
     echo "Successfully ${actioned} $file_or_uri from $fileSource with $method"
 else
     echo -n "Failed to $action $file_or_uri from $fileSource with $method: " 1>&2
