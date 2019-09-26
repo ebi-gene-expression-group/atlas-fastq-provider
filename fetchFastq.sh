@@ -157,7 +157,7 @@ elif [ "$method" == 'ena_ftp' ]; then
 elif [ "$method" == 'ena_auto' ]; then
     
     # Auto-select the ENA method get the file
-    fetch_file_from_ena_auto $file_or_uri $target $ENA_RETRIES
+    fetch_file_from_ena_auto $file_or_uri $target $ENA_RETRIES "$library" "$validateOnly"
     fetch_status=$?    
 else
     echo "Don't know how to get $file_or_uri from $fileSource with $method" 1>&2
