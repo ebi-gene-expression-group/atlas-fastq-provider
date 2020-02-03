@@ -17,10 +17,10 @@ get_library_path() {
         # 
         # - 6-digit codes under e.g. SRR1234567
         # - 7-digit codes under e.g. 007/SRR1234567
-        # - 8-digit codes under e.g. 008/SRR12345678
+        # - 8-digit codes under e.g. 078/SRR12345678
         #
-        # i.e. we zero-pad last two digits to three characters to make a prefix
-        # as requied. Wasting a digit, prefix will never go beyond 099
+        # i.e. we zero-pad to three digits anything after and including the
+        # 10th digit
 
         if [[ "$num" =~ ^[0-9]+$ ]]; then
             if [ $num -gt 1000000 ]; then
