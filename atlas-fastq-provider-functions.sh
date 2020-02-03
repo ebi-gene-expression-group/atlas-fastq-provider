@@ -15,7 +15,7 @@ get_library_path() {
        
         # ENA pattern is:
         # 
-        # - 6-digit codes under e.g. SRR1234567
+        # - 6-digit codes under e.g. SRR123456
         # - 7-digit codes under e.g. 007/SRR1234567
         # - 8-digit codes under e.g. 078/SRR12345678
         #
