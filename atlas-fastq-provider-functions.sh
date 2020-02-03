@@ -12,10 +12,19 @@ get_library_path() {
     local prefix=
     if ! [[ $subDir =~ "ENC" ]] && [[ -z "$forceShortForm" ]] ; then
         local num=${library:3}
-        
+       
+        # ENA pattern is:
+        # 
+        # - 6-digit codes under e.g. SRR1234567
+        # - 7-digit codes under e.g. 007/SRR1234567
+        # - 8-digit codes under e.g. 008/SRR12345678
+        #
+        # i.e. we zero-pad last two digits to three characters to make a prefix
+        # as requied. Wasting a digit, prefix will never go beyond 099
+
         if [[ "$num" =~ ^[0-9]+$ ]]; then
             if [ $num -gt 1000000 ]; then
-                prefix="00${library:9}/"
+                prefix="$(printf %03d ${library:9})/"
             fi
         fi 
     fi
