@@ -186,6 +186,16 @@ link_local_dir() {
 
     if [ -n "$library" ]; then
         dirFiles=$(echo -e "$dirFiles" | grep $library)
+        if [ $? -ne 0 ]; then
+            echo "No files matching $library in source directory $sourceDir" 1>&2
+            return 8
+        fi
+    fi
+
+    # If library is specified, only link files maching the pattern
+
+    if [ -n "$library" ]; then
+        dirFiles=$(echo -e "$dirFiles" | grep $library)
     fi
 
     # Do the linking

@@ -75,6 +75,8 @@ if [ $fetchStatus -eq 0 ]; then
     echo "Successfully downloaded $library from ENA with $method"
 elif [ $fetchStatus -eq 2 ]; then 
     echo  "Skipped download of already existing $library files from ENA with $method" 
+elif [ $fetchStatus -eq 8 ]; then
+    echo "$library files could not be linked from $fileSource"
 else
     echo -n "Failed to download $library files from ENA with $method: " 
     if [ $fetchStatus -eq 3 ]; then
