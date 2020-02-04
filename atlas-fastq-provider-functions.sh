@@ -24,7 +24,8 @@ get_library_path() {
 
         if [[ "$num" =~ ^[0-9]+$ ]]; then
             if [ $num -gt 1000000 ]; then
-                prefix="$(printf %03d ${library:9})/"
+                digits=${library:9}
+                prefix="$(printf %03d  ${digits##+(0)})/"    
             fi
         fi 
     fi
