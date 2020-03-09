@@ -947,13 +947,13 @@ guess_file_source() {
  
     local fileSource='unknown'
 
-    echo $(basename $sourceFile) | grep "[EDS]RR[0-9]*" > /dev/null
+    echo $sourceFile | grep -E "^(hca:|hca/)" > /dev/null
     if [ $? -eq 0 ]; then
-        fileSource='ena'
+        fileSource='hca'
     else
-        echo $sourceFile | grep -E "^(hca:|hca/)" > /dev/null
+        echo $(basename $sourceFile) | grep "[EDS]RR[0-9]*" > /dev/null
         if [ $? -eq 0 ]; then
-            fileSource='hca'
+            fileSource='ena'
         else
             echo "Cannot automatically determine source for $sourceFile" 1>&2
         fi
