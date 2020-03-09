@@ -1,4 +1,4 @@
-# Atlas FASTQ provider
+# Atlas FASTQ provider [![Anaconda-Server Badge](https://anaconda.org/ebi-gene-expression-group/atlas-fastq-provider/badges/installer/conda.svg)](https://conda.anaconda.org/ebi-gene-expression-group)
 
 Scripts and utilities for providing fastqs to workflows.
 
