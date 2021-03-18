@@ -11,7 +11,7 @@ setup() {
     sra="sra/ftp://ftp.sra.ebi.ac.uk/vol1/srr/SRR100/060/SRR10069860/SRR10069860_1.fastq.gz"
     sra_file_ftp="${output_dir}/SRR10069860_1.sra.ftp.fastq.gz"
     sra_file_http="${output_dir}/SRR10069860_1.sra.http.fastq.gz"
-    
+    export NOPROBE=1    
 
     if [ ! -d "$data_dir" ]; then
         mkdir -p $data_dir
