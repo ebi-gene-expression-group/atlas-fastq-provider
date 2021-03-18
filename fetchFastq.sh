@@ -1,6 +1,6 @@
 #!/usr/bin/env bash 
 
-usage() { echo "Usage: $0 [-f <file or uri>] [-t <target file>] [-s <source resource or directory, default 'auto'>] [-m <retrieval method, default 'wget'>] [-p <public or private, default public>] [-l <library, by default inferred from file name>] [-c <config file to override defaults>] [-v <validate only, don't download>]" 1>&2; }
+usage() { echo "Usage: $0 [-f <file or uri>] [-t <target file>] [-s <source resource or directory, default 'auto'>] [-m <retrieval method, default 'wget'>] [-p <public or private, default public>] [-l <library, by default inferred from file name>] [-c <config file to override defaults>] [-v <validate only, don't download>] [-d <download type, fastq or srr>]" 1>&2; }
 
 # Parse arguments
 
@@ -9,8 +9,9 @@ m=auto
 p=public
 l=
 v=
+d=fastq
 
-while getopts ":f:t:s:m:p:l:c:v:" o; do
+while getopts ":f:t:s:m:p:l:c:v:d:" o; do
     case "${o}" in
         f)
             f=${OPTARG}
@@ -36,6 +37,9 @@ while getopts ":f:t:s:m:p:l:c:v:" o; do
         v)
             v=${OPTARG}
             ;;
+        d)
+            d=${OPTARG}
+            ;;
         *)
             usage
             exit 0
@@ -44,7 +48,7 @@ while getopts ":f:t:s:m:p:l:c:v:" o; do
 done
 shift $((OPTIND-1))
 
-if [ -z "${f}" ] || [ -z "${s}" ] || [ -z "${t}" ] || [ -z "${m}" ]; then
+if [ -z "${f}" ] || [ -z "${s}" ] || [ -z "${m}" ]; then
     usage
     exit 1
 fi
@@ -64,6 +68,11 @@ status=$p
 library=$l
 configFile=$c
 validateOnly=$v
+downloadType=$d
+
+if [ -z "$target" ]; then
+    target=$(basename $file_or_uri)
+fi
 
 if [ ! -z "$configFile" ]; then
     source $configFile
@@ -78,6 +87,8 @@ guessedSource=$(guess_file_source $file_or_uri)
 if [[  "$guessedSource" == 'hca' || ( "$fileSource" == 'auto' && "$status" != 'private' ) ]]; then
     fileSource=$guessedSource
 fi
+
+echo "File source: $fileSource"
 
 # Guess the method when set to 'auto', set to SSH for private
 
@@ -115,7 +126,7 @@ elif [ "$method" != 'wget' ]; then
             exit 8    
         fi
     
-    else
+    elif [ "$fileSource" != 'sra' ]; then
         echo "No special procedures implemented for $fileSource. Please use 'wget' or 'dir'." 
     fi
 
@@ -124,8 +135,17 @@ fi
 # Now generate the output file
 
 fetch_status=
+echo "METHOD: $method"
 
-if [ "$method" == 'hca' ]; then
+# For SRA has a special method, in that it will unpack an SRA file, but we'll
+# pass the method through for the downloading of that SRA file
+
+if [ "$fileSource" == 'sra' ]; then
+
+    fetch_file_by_sra $file_or_uri $target $m
+    fetch_status=$?
+
+elif [ "$method" == 'hca' ]; then
     fetch_file_by_hca $file_or_uri $target
     fetch_status=$?
 
@@ -139,25 +159,25 @@ elif [ "$method" == 'dir' ]; then
 
 elif [ "$method" == 'ena_ssh' ]; then
     # Use an SSH connection to retrieve the file
-    fetch_file_from_ena_over_ssh $file_or_uri $target $ENA_RETRIES $library "$validateOnly" $status
+    fetch_file_from_ena_over_ssh $file_or_uri $target "$ENA_RETRIES" "$library" "$validateOnly" "$downloadType" $status
     fetch_status=$?    
 
 elif [ "$method" == 'ena_http' ]; then
     
     # Use the HTTP endpoint to get the file
-    fetch_file_from_ena_over_http $file_or_uri $target $ENA_RETRIES $library "$validateOnly"
+    fetch_file_from_ena_over_http $file_or_uri $target "$ENA_RETRIES" "$library" "$validateOnly" "$downloadType"
     fetch_status=$?    
 
 elif [ "$method" == 'ena_ftp' ]; then
     
     # Use the FTP wget to get the file
-    fetch_file_from_ena_over_ftp $file_or_uri $target $ENA_RETRIES $library "$validateOnly"
+    fetch_file_from_ena_over_ftp $file_or_uri $target "$ENA_RETRIES" "$library" "$validateOnly" "$downloadType"
     fetch_status=$?    
 
 elif [ "$method" == 'ena_auto' ]; then
     
     # Auto-select the ENA method get the file
-    fetch_file_from_ena_auto $file_or_uri $target $ENA_RETRIES "$library" "$validateOnly"
+    fetch_file_from_ena_auto $file_or_uri $target "$ENA_RETRIES" "$library" "$validateOnly" "$downloadType"
     fetch_status=$?    
 else
     echo "Don't know how to get $file_or_uri from $fileSource with $method" 1>&2
@@ -194,6 +214,8 @@ else
         echo "$fileSource is not a directory"  1>&2
     elif [ $fetch_status -eq 8 ]; then
         echo "Probable malformed HCA command" 1>&2
+    elif [ $fetch_status -eq 9 ]; then
+        echo "SRA file retrieval issue" 1>&2
     else
         echo "download failed"  1>&2
     fi
