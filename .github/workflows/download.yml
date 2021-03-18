@@ -1,9 +1,6 @@
 name: FASTQ file download
 
-on: 
-    push:
-        tags:
-            - v*
+on: [pull_request]
 
 jobs:
   build:
