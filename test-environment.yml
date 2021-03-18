@@ -1,0 +1,4 @@
+name: test
+dependencies:
+  - bats
+  - sra-tools  
