@@ -211,9 +211,17 @@ link_local_dir() {
 
 get_temp_dir() {
     
-    local tempdir='tmp'
-    if [ "$FASTQ_PROVIDER_TEMPDIR" != '' ]; then
+    local tempdir=
+    
+    if [ -n "$FASTQ_PROVIDER_TEMPDIR" ]; then
         tempdir="$FASTQ_PROVIDER_TEMPDIR"
+    else
+        if [ -n "$TMPDIR" ]; then
+            tempdir="${TMPDIR}/atlas-fastq-provider"
+        else
+            tempdir=$(pwd)/tmp/atlas-fastq-provider
+        fi
+        export FASTQ_PROVIDER_TEMPDIR=$tempdir
     fi
     mkdir -p $tempdir
     echo $tempdir
@@ -737,6 +745,7 @@ fetch_file_from_ena_over_ssh() {
     local validateOnly=${5:-''}
     local downloadType=${6:-'fastq'}
     local status=${7:-'public'}
+    local tempdir=$(get_temp_dir)
 
     check_variables "enaFile" "destFile"
 
@@ -780,7 +789,7 @@ fetch_file_from_ena_over_ssh() {
     local sshTempFile=${destFile}.tmp
 
     if [ "$sudoString" != '' ]; then
-        local sshTempDir=${FASTQ_PROVIDER_TEMPDIR}/ssh
+        local sshTempDir=$tempdir/ssh
         mkdir -p $sshTempDir
         chmod a+rwx $sshTempDir
         sshTempFile=$sshTempDir/$(basename ${destFile}).tmp
@@ -940,6 +949,7 @@ get_library_listing() {
     local library=$1
     local method=${2:-'ssh'}    
     local status=${3:-'public'}
+    local tempdir=$(get_temp_dir)
 
     check_variables 'library'
 
@@ -970,7 +980,7 @@ get_library_listing() {
         # anything other than '.listing', and we therefore get clashes with
         # multiple downloads at once         
 
-        local listingDir="${FASTQ_PROVIDER_TEMPDIR}/${library}_listing"
+        local listingDir="$tempdir/${library}_listing"
         mkdir -p $listingDir
 
         pushd $listingDir > /dev/null
