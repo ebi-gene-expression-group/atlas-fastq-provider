@@ -3,17 +3,23 @@ name: FASTQ file download
 on: [pull_request]
 
 jobs:
-  build:
-
-    runs-on: ubuntu-latest
-
+  setup:
+    name: ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest", "macos-latest"]
+    defaults:
+      run:
+        shell: bash -l {0}
     steps:
       - uses: actions/checkout@v2
-   
+
       - name: Add workspace to path
         run: |
           echo "${GITHUB_WORKSPACE}" >> $GITHUB_PATH
-   
+
       - name: Cache conda
         uses: actions/cache@v1
         env:
@@ -23,7 +29,7 @@ jobs:
           path: ~/conda_pkgs_dir
           key:
             ${{ matrix.os }}-conda-${{ env.CACHE_NUMBER }}-${{hashFiles('test-environment.yml') }}
-
+      
       - uses: conda-incubator/setup-miniconda@v2
         with:
           activate-environment: test
@@ -34,8 +40,7 @@ jobs:
           channel-priority: flexible
           show-channel-urls: true
           use-only-tar-bz2: true
-
+      
       - name: Run tests
         run: |
           atlas-fastq-provider-post-install-tests.sh
-
