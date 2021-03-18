@@ -33,17 +33,6 @@ setup() {
     [ -f "$fastq_file_ftp" ]
 }
 
-@test "Download Fastq file from HTTP" {
-    if  [ "$resume" = 'true' ] && [ -f "$fastq_file_http" ]; then
-        skip "$fastq_file_http exists"
-    fi
-
-    run rm -rf $fastq_file_http && eval "./fetchFastq.sh -f $fastq -m http -t $fastq_file_http"
-
-    [ "$status" -eq 0 ]
-    [ -f "$fastq_file_http" ]
-}
-
 @test "Download and unpack SRA file from FTP" {
     if  [ "$resume" = 'true' ] && [ -f "$sra_file_ftp" ]; then
         skip "$sra_file_ftp exists"
@@ -55,13 +44,25 @@ setup() {
     [ -f "$sra_file_ftp" ]
 }
 
-@test "Download and unpack SRA file from HTTP" {
-    if  [ "$resume" = 'true' ] && [ -f "$sra_file_http" ]; then
-        skip "$sra_file_http exists"
-    fi
+#@test "Download Fastq file from HTTP" {
+#    if  [ "$resume" = 'true' ] && [ -f "$fastq_file_http" ]; then
+#        skip "$fastq_file_http exists"
+#    fi
 
-    run rm -rf $sra_file_http && eval "./fetchFastq.sh -f $sra -m http -t $sra_file_http"
+#    run rm -rf $fastq_file_http && eval "./fetchFastq.sh -f $fastq -m http -t $fastq_file_http"
 
-    [ "$status" -eq 0 ]
-    [ -f "$sra_file_http" ]
-}
+#    [ "$status" -eq 0 ]
+#    [ -f "$fastq_file_http" ]
+#}
+
+
+#@test "Download and unpack SRA file from HTTP" {
+#    if  [ "$resume" = 'true' ] && [ -f "$sra_file_http" ]; then
+#        skip "$sra_file_http exists"
+#    fi
+
+#    run rm -rf $sra_file_http && eval "./fetchFastq.sh -f $sra -m http -t $sra_file_http"
+
+#    [ "$status" -eq 0 ]
+#    [ -f "$sra_file_http" ]
+#}
