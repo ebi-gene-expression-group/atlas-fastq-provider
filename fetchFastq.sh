@@ -56,7 +56,14 @@ fi
 # Source functions from script directory
 scriptDir=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 source $scriptDir/atlas-fastq-provider-functions.sh
-source $scriptDir/atlas-fastq-provider-config.sh
+
+config=$scriptDir/atlas-fastq-provider-config.sh
+defaultConfig=$scriptDir/atlas-fastq-provider-config.sh.default
+
+if [ ! -e $config ]; then
+    cp $defaultConfig $config
+fi
+source $config
 
 # Re-assign variables for readability
 
