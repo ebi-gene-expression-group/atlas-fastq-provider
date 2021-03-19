@@ -9,8 +9,10 @@ setup() {
     fastq_file_ftp="${output_dir}/ERR1888172_1.ftp.fastq.gz"
     fastq_file_http="${output_dir}/ERR1888172_1.http.fastq.gz"
     sra="sra/ftp://ftp.sra.ebi.ac.uk/vol1/srr/SRR100/060/SRR10069860/SRR10069860_1.fastq.gz"
+    sra_lib="SRR10069860"
     sra_file_ftp="${output_dir}/SRR10069860_1.sra.ftp.fastq.gz"
     sra_file_http="${output_dir}/SRR10069860_1.sra.http.fastq.gz"
+    sra_file_lib_ftp="${output_dir}/SRR10069860_1.fastq.gz"
     export NOPROBE=1    
 
     if [ ! -d "$data_dir" ]; then
@@ -33,7 +35,7 @@ setup() {
     [ -f "$fastq_file_ftp" ]
 }
 
-@test "Download and unpack SRA file from FTP" {
+@test "Download and unpack SRA file from FTP, providing prefixed link" {
     if  [ "$resume" = 'true' ] && [ -f "$sra_file_ftp" ]; then
         skip "$sra_file_ftp exists"
     fi
@@ -42,6 +44,17 @@ setup() {
 
     [ "$status" -eq 0 ]
     [ -f "$sra_file_ftp" ]
+}
+
+@test "Download and unpack SRA file from FTP, providing just a library identifier" {
+    if  [ "$resume" = 'true' ] && [ -f "$sra_file_lib_ftp" ]; then
+        skip "$sra_file_lib_ftp exists"
+    fi
+
+    run rm -rf $sra_file_lib_ftp && eval "fetchEnaLibraryFastqs.sh -l ${sra_lib} -d ${output_dir} -t srr"
+
+    [ "$status" -eq 0 ]
+    [ -f "$sra_file_lib_ftp" ]
 }
 
 #@test "Download Fastq file from HTTP" {

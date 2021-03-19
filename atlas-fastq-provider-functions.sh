@@ -400,7 +400,63 @@ function fetch_file_by_hca {
     return $exitCode
 }
 
-# Fetch file using SRA tools. Try to put all output files in the same location
+# Get all the files from an SRA file for a library
+
+function fetch_library_files_from_sra_file() {
+    local library=$1
+    local outputDir=${2:-"$(pwd)"}
+    local retries=${3:-3}
+    local method=${4:-'auto'}
+    local status=${5:-'public'}
+    local tempdir=$(get_temp_dir)
+    local returnCode=0
+
+    check_variables 'library' 'outputDir'
+
+    local sourceFile=$(dirname $(get_library_path $library $ENA_FTP_ROOT_PATH/srr))
+    outputDir=$(realpath $outputDir)
+
+    echo "Downloading file $sourceFile"
+    if [ $method == 'auto' ]; then
+        fetchMethod='fetch_file_from_ena_auto'
+    else
+        fetchMethod="fetch_file_from_ena_over_$method"
+    fi
+
+    mkdir -p $tempdir/$library
+    
+    pushd $tempdir/$library > /dev/null
+
+    if [ ! -e $library ]; then
+        $fetchMethod $library $library $retries "" "" "srr" $status
+        returnCode=$?
+    fi
+
+    if [ $returnCode -eq 0 ]; then
+        if [ -e "$library" ]; then
+            hash fastq-dump 2>/dev/null || { echo >&2 "The NCBI fastq-dump tool is required,  but it's not installed.  Aborting."; exit 1; }
+            fastq-dump -I --split-files $library
+            if [ $? -eq 0 ]; then
+                gzip *.fastq
+                mv *.fastq.gz $outputDir
+            else
+                returnCode=9
+            fi
+        else
+            echo "$library was not retrieved using $sourceFile" 1>&2
+            returnCode=9
+        fi
+    fi
+    popd > /dev/null
+
+    if [ $returnCode -eq 0 ]; then
+        rm -rf $tempdir/$library
+    fi
+
+    return $returnCode
+}
+
+# Fetch file from an SRA file. Try to put all output files in the same location
 # as the main target to prevent multiple calls for the same SRA package.
 # Expect URIs like
 # sra/ftp://ftp.sra.ebi.ac.uk/vol1/srr/SRR100/061/SRR10009461/SRR10009461_2.fastq
@@ -410,7 +466,10 @@ function fetch_file_by_hca {
 function fetch_file_by_sra {
     local sourceFile=$1
     local destFile=$2
-    local method=$3
+    local retries=${3:-3}
+    local method=${4:-'auto'}
+    local status=${5:-'public'}
+    local returnCode=0
 
     sourceFile=$(echo "$sourceFile" | sed 's/^sra\///')
     destFile=$(realpath $destFile)
@@ -418,64 +477,26 @@ function fetch_file_by_sra {
 
     local sraUri=$(dirname $sourceFile)
     local sraFile=$(echo -e "$sourceFile"| awk -F "/" '{print $NF}')
-    local sraName=$(echo -e "$sourceFile"| awk -F "/" '{print $(NF-1)}')
-    local tempdir=$(get_temp_dir)
+    local library=$(echo -e "$sourceFile"| awk -F "/" '{print $(NF-1)}')
 
-    # Run the fetch of the SRA file within the temp dir
+    fetch_library_files_from_sra_file "$library" "$destDir" "$retries" "$method" "$status" 
+    returnCode=$?
+    
+    if [ $returnCode -eq 0 ]; then
 
-    mkdir -p $tempdir/$sraName
-    pushd $tempdir/$sraName    
-
-    exitCode=0
-
-    if [ -z "$sraName" ]; then
-        echo "Failed to derive SRA name from $sraName" 1>&2
-        return 1
-    else
-        # Check if SRA file was previously retrieved and retained for some reason
-
-        if [ ! -e $sraName ]; then
-            fetchFastq.sh -f $sraUri -d srr -m $method
-            if [ $? -ne 0 ] || [ ! -e $sraName ]; then
-                echo "Could not download SRA file $sraURI" 1>&2
-                exitCode=9
-                rm -f $sraName 
-            fi
-        fi
-
-        # If we still have the SRA file we're good to go
-
-        if [ -e "$sraName" ]; then
-            hash fastq-dump 2>/dev/null || { echo >&2 "The NCBI fastq-dump tool is required,  but it's not installed.  Aborting."; exit 1; }
-            fastq-dump -I --split-files $sraName
-            gzip *.fastq
-
-            if [ ! -e $sraFile ]; then
-                echo "$sraFile was not retrieved using $sraName" 1>&2
-                exitCode=9
-            else
-                mv $sraFile $destFile
-                
-                # Also move any other unpacked files to the destination dir so they
-                # can be picked up by any calling functions, and the SRA file not
-                # re-downloaded.
-                
-                ls *.fastq.gz > /dev/null 2>&1
-                if [ $? -eq 0 ]; then
-                    mv *.fastq.gz $destDir
-                fi
-            fi
+        # If user has specified a different destination path, rename   
+     
+        if [ ! -e $destDir/$sraFile ]; then
+            echo "$sraFile was not retrieved using $sraName" 1>&2
+            returnCode=9
         else
-            exitCode=9 
+            if [ "$destDir/$sraFile" != "$destFile" ]; then
+                mv "$destDir/$sraFile" "$destFile"
+            fi
         fi
     fi
 
-    # Jump back to starting dir and clean up
-
-    popd
-    rm -rf $tempdir/$sraName
-
-    return $exitCode
+    return $returnCode
 }
 
 # Run a command/function in a time-limited fashion
@@ -659,6 +680,7 @@ select_ena_download_method() {
     
     local tempdir=$(get_temp_dir)
     local probe_file=$tempdir/fastq_provider.probe
+    echo "probe file: $probe_file" 1>&2
     update_ena_probe
 
     local ordered_methods='None'
@@ -716,7 +738,6 @@ fetch_file_from_ena_auto() {
     fi
 
     local exitCode=
-
     for i in $(seq 1 $retries); do 
         for method in $methods; do
             echo "Fetching $enaFile using method $method, attempt $i"

@@ -149,7 +149,7 @@ echo "METHOD: $method"
 
 if [ "$fileSource" == 'sra' ]; then
 
-    fetch_file_by_sra $file_or_uri $target $m
+    fetch_file_by_sra $file_or_uri $target "" $m
     fetch_status=$?
 
 elif [ "$method" == 'hca' ]; then
