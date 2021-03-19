@@ -32,6 +32,20 @@ get_library_path() {
     echo "${rootDir}/${subDir}/${prefix}${library}/${library}"
 }
 
+# Derive a library ID from a URI
+
+get_library_id_from_uri() {
+    local uri=$1
+    local library=
+    library=$(echo $uri | grep -Eo "[SED]RR[0-9]{5,9}" | head -n 1)
+    if [ $? -ne 0 ]; then
+        echo "No ENA/SRA ID found in $uri" 1>&2
+        return 1
+    else 
+        echo -n "$library"
+    fi
+}
+
 # Check a list of variables are set
 
 check_variables() {
@@ -477,21 +491,25 @@ function fetch_file_by_sra {
 
     local sraUri=$(dirname $sourceFile)
     local sraFile=$(echo -e "$sourceFile"| awk -F "/" '{print $NF}')
-    local library=$(echo -e "$sourceFile"| awk -F "/" '{print $(NF-1)}')
-
-    fetch_library_files_from_sra_file "$library" "$destDir" "$retries" "$method" "$status" 
+    local library=
+    library=$(get_library_id_from_uri $sourceFile)
     returnCode=$?
-    
-    if [ $returnCode -eq 0 ]; then
 
-        # If user has specified a different destination path, rename   
-     
-        if [ ! -e $destDir/$sraFile ]; then
-            echo "$sraFile was not retrieved using $sraName" 1>&2
-            returnCode=9
-        else
-            if [ "$destDir/$sraFile" != "$destFile" ]; then
-                mv "$destDir/$sraFile" "$destFile"
+    if [ $returnCode -eq 0 ]; then
+        fetch_library_files_from_sra_file "$library" "$destDir" "$retries" "$method" "$status" 
+        returnCode=$?
+        
+        if [ $returnCode -eq 0 ]; then
+
+            # If user has specified a different destination path, rename   
+         
+            if [ ! -e $destDir/$sraFile ]; then
+                echo "$sraFile was not retrieved using $sraName" 1>&2
+                returnCode=9
+            else
+                if [ "$destDir/$sraFile" != "$destFile" ]; then
+                    mv "$destDir/$sraFile" "$destFile"
+                fi
             fi
         fi
     fi
@@ -894,25 +912,31 @@ convert_ena_fastq_to_ssh_path(){
     local fastq=$1
     local status=${2:-'public'}
     local library=${3:-''}
+    local returnCode=0
 
     local fastq=$(basename $fastq)
     if [ "$status" == 'private' ]; then
         if [ "$library" == '' ]; then
             echo "ERROR: For private FASTQ files, the library cannot be inferred from the file name and must be specified" 1>&2
-            return 1
+            returnCode=1
         fi 
     else
-        library=$(echo $fastq | grep -o "[SED]RR[0-9]*")
+        library=$(get_library_id_from_uri $fastq)
+        returnCode=$?
     fi
 
-    local libDir=
-    if [ "$status" == 'private' ]; then
-        libDir=$(dirname $(get_library_path $library $ENA_PRIVATE_SSH_ROOT_DIR 'short'))
+    if [ $returnCode -ne 0 ]; then
+        return $returnCode
     else
-        libDir=$(dirname $(get_library_path $library $ENA_SSH_ROOT_DIR/fastq))
-    fi
+        local libDir=
+        if [ "$status" == 'private' ]; then
+            libDir=$(dirname $(get_library_path $library $ENA_PRIVATE_SSH_ROOT_DIR 'short'))
+        else
+            libDir=$(dirname $(get_library_path $library $ENA_SSH_ROOT_DIR/fastq))
+        fi
 
-    echo $libDir/$fastq
+        echo $libDir/$fastq
+    fi
 }
 
 # Convert an SRA-style file to its URI 
@@ -922,25 +946,29 @@ convert_ena_fastq_to_uri() {
     local uriType=${2}
     local library=${3:-''}
     local downloadType=${4:-'fastq'}
+    local returnCode=0
 
     # .sra file downloads are just like
     # https://hx.fire.sdo.ebi.ac.uk/fire/public/sra/srr/SRR100/061/SRR10009461
     # (so just looks like the dir if this was for an FTP file)
     if [ "$library" == '' ]; then
-         library=$(echo $fastq | grep -Eo "[SED]RR[0-9]{5,9}" | head -n 1)
+        library=$(get_library_id_from_uri $fastq)
+        returnCode=$?
     fi
     
-    if [ "$downloadType" = 'fastq' ]; then
-        fastq="/$(basename $fastq)"
-    else
-        fastq=''
-    fi
+    if [ $returnCode -eq 0 ]; then
+        if [ "$downloadType" = 'fastq' ]; then
+            fastq="/$(basename $fastq)"
+        else
+            fastq=''
+        fi
 
-    local libDir=$(dirname $(get_library_path $library))
-    if [ "$uriType" == 'http' ]; then
-        echo ${ENA_HTTP_ROOT_PATH}/$downloadType/$libDir$fastq
-    else
-        echo ${ENA_FTP_ROOT_PATH}/$downloadType/$libDir$fastq
+        local libDir=$(dirname $(get_library_path $library))
+        if [ "$uriType" == 'http' ]; then
+            echo ${ENA_HTTP_ROOT_PATH}/$downloadType/$libDir$fastq
+        else
+            echo ${ENA_FTP_ROOT_PATH}/$downloadType/$libDir$fastq
+        fi
     fi
 }
 
