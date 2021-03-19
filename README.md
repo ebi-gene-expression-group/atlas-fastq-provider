@@ -97,8 +97,16 @@ fetchFastq.sh -f ERR1888646_1.fastq.gz -t ERR1888646_1.fastq.gz -s /path/to/dir
 
 ### Download all files from an ENA library
 
+#### Fetching individual files
+
 ```
 fetchEnaLibraryFastqs.sh -l ERR1888646 -d ERR1888646
+```
+
+#### Pulling and unpacking SRA files
+
+```
+fetchEnaLibraryFastqs.sh -l ERR1888646 -d ERR1888646 -t srr
 ```
 
 ### Download file from HCA
