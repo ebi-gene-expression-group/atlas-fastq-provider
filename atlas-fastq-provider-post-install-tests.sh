@@ -51,7 +51,7 @@ setup() {
         skip "$sra_file_lib_ftp exists"
     fi
 
-    run rm -rf $sra_file_lib_ftp && eval "fetchEnaLibraryFastqs.sh -l ${sra_lib} -d ${output_dir} -t srr"
+    run rm -rf $sra_file_lib_ftp && eval "fetchEnaLibraryFastqs.sh -l ${sra_lib} -d ${output_dir} -m ftp -t srr"
 
     [ "$status" -eq 0 ]
     [ -f "$sra_file_lib_ftp" ]
