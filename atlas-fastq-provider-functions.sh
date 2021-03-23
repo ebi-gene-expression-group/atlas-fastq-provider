@@ -305,18 +305,19 @@ record_action() {
 wait_and_record() {
 
     local action=$1
+    local fetchFreqMillis=${FETCH_FREQ_MILLIS:-500}
 
     check_variables 'action'
     
-    local last_time=$(time_since_last $action)
-    while [ $? -ne 0 ] || (( $(echo "$last_time < $FETCH_FREQ_MILLIS" |bc -l) )); do
+    local last_time=
+    last_time=$(time_since_last $action)
+    while [ $? -ne 0 ] || (( $(echo "$last_time < $fetchFreqMillis" |bc -l) )); do
         # Sleep for 1/100th of a second
         usleep 10000 
 
         # Check last_time again- other processes could have altered it
         last_time=$(time_since_last $action)
     done
-    
     record_action $action
 }
 
@@ -358,7 +359,7 @@ fetch_file_by_wget() {
 
     # All being well proceed with the download
 
-    echo "Downloading $sourceFile to $destFile using wget"
+    echo "Downloading $sourceFile to $(realpath $destFile) using wget"
     mkdir -p $(dirname $destFile)
 
     local wgetTempFile=${destFile}.tmp
@@ -429,6 +430,12 @@ function fetch_library_files_from_sra_file() {
 
     local sourceFile=$(dirname $(get_library_path $library $ENA_FTP_ROOT_PATH/srr))
     outputDir=$(realpath $outputDir)
+
+    # If user has specifified wget, reset to FTP for ENA
+
+    if [ "$method" = 'wget' ]; then
+        method=ftp
+    fi
 
     echo "Downloading file $sourceFile"
     if [ $method == 'auto' ]; then
