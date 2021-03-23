@@ -95,8 +95,6 @@ if [[  "$guessedSource" == 'hca' || ( "$fileSource" == 'auto' && "$status" != 'p
     fileSource=$guessedSource
 fi
 
-echo "File source: $fileSource"
-
 # Guess the method when set to 'auto', set to SSH for private
 
 if [ "$status" == 'private' ]; then 
@@ -110,7 +108,7 @@ elif [ "$fileSource" == 'hca' ]; then
 
 elif [ "$method" == 'auto' ]; then
 
-    if [ "$fileSource" == 'ena' ]; then
+    if [ "$fileSource" == 'ena' ] || [ "$fileSource" == 'sra' ]; then
         method='ena_auto'
 
     elif [ -d "$fileSource" ]; then
@@ -142,7 +140,6 @@ fi
 # Now generate the output file
 
 fetch_status=
-echo "METHOD: $method"
 
 # For SRA has a special method, in that it will unpack an SRA file, but we'll
 # pass the method through for the downloading of that SRA file
