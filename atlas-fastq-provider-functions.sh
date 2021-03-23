@@ -32,6 +32,20 @@ get_library_path() {
     echo "${rootDir}/${subDir}/${prefix}${library}/${library}"
 }
 
+# Derive a library ID from a URI
+
+get_library_id_from_uri() {
+    local uri=$1
+    local library=
+    library=$(echo $uri | grep -Eo "[SED]RR[0-9]{5,9}" | head -n 1)
+    if [ $? -ne 0 ]; then
+        echo "No ENA/SRA ID found in $uri" 1>&2
+        return 1
+    else 
+        echo -n "$library"
+    fi
+}
+
 # Check a list of variables are set
 
 check_variables() {
@@ -211,9 +225,17 @@ link_local_dir() {
 
 get_temp_dir() {
     
-    local tempdir='tmp'
-    if [ "$FASTQ_PROVIDER_TEMPDIR" != '' ]; then
+    local tempdir=
+    
+    if [ -n "$FASTQ_PROVIDER_TEMPDIR" ]; then
         tempdir="$FASTQ_PROVIDER_TEMPDIR"
+    else
+        if [ -n "$TMPDIR" ]; then
+            tempdir="${TMPDIR}/atlas-fastq-provider"
+        else
+            tempdir=$(pwd)/tmp/atlas-fastq-provider
+        fi
+        export FASTQ_PROVIDER_TEMPDIR=$tempdir
     fi
     mkdir -p $tempdir
     echo $tempdir
@@ -360,6 +382,7 @@ fetch_file_by_wget() {
         rm -f $wgetTempFile 
         return 1
     else
+        echo "$wgetTempFile success!" 1>&2
         mv $wgetTempFile $destFile
     fi
 }
@@ -391,6 +414,109 @@ function fetch_file_by_hca {
     return $exitCode
 }
 
+# Get all the files from an SRA file for a library
+
+function fetch_library_files_from_sra_file() {
+    local library=$1
+    local outputDir=${2:-"$(pwd)"}
+    local retries=${3:-3}
+    local method=${4:-'auto'}
+    local status=${5:-'public'}
+    local tempdir=$(get_temp_dir)
+    local returnCode=0
+
+    check_variables 'library' 'outputDir'
+
+    local sourceFile=$(dirname $(get_library_path $library $ENA_FTP_ROOT_PATH/srr))
+    outputDir=$(realpath $outputDir)
+
+    echo "Downloading file $sourceFile"
+    if [ $method == 'auto' ]; then
+        fetchMethod='fetch_file_from_ena_auto'
+    else
+        fetchMethod="fetch_file_from_ena_over_$method"
+    fi
+
+    mkdir -p $tempdir/$library
+    
+    pushd $tempdir/$library > /dev/null
+
+    if [ ! -e $library ]; then
+        $fetchMethod $library $library $retries "" "" "srr" $status
+        returnCode=$?
+    fi
+
+    if [ $returnCode -eq 0 ]; then
+        if [ -e "$library" ]; then
+            hash fastq-dump 2>/dev/null || { echo >&2 "The NCBI fastq-dump tool is required,  but it's not installed.  Aborting."; exit 1; }
+            fastq-dump -I --split-files $library
+            if [ $? -eq 0 ]; then
+                gzip *.fastq
+                mv *.fastq.gz $outputDir
+            else
+                returnCode=9
+            fi
+        else
+            echo "$library was not retrieved using $sourceFile" 1>&2
+            returnCode=9
+        fi
+    fi
+    popd > /dev/null
+
+    if [ $returnCode -eq 0 ]; then
+        rm -rf $tempdir/$library
+    fi
+
+    return $returnCode
+}
+
+# Fetch file from an SRA file. Try to put all output files in the same location
+# as the main target to prevent multiple calls for the same SRA package.
+# Expect URIs like
+# sra/ftp://ftp.sra.ebi.ac.uk/vol1/srr/SRR100/061/SRR10009461/SRR10009461_2.fastq
+# This will pull ftp://ftp.sra.ebi.ac.uk/vol1/srr/SRR100/061/SRR10009461 (.sra
+# file) and extract SRR10009461_2.fastq
+
+function fetch_file_by_sra {
+    local sourceFile=$1
+    local destFile=$2
+    local retries=${3:-3}
+    local method=${4:-'auto'}
+    local status=${5:-'public'}
+    local returnCode=0
+
+    sourceFile=$(echo "$sourceFile" | sed 's/^sra\///')
+    destFile=$(realpath $destFile)
+    destDir=$(dirname $destFile)
+
+    local sraUri=$(dirname $sourceFile)
+    local sraFile=$(echo -e "$sourceFile"| awk -F "/" '{print $NF}')
+    local library=
+    library=$(get_library_id_from_uri $sourceFile)
+    returnCode=$?
+
+    if [ $returnCode -eq 0 ]; then
+        fetch_library_files_from_sra_file "$library" "$destDir" "$retries" "$method" "$status" 
+        returnCode=$?
+        
+        if [ $returnCode -eq 0 ]; then
+
+            # If user has specified a different destination path, rename   
+         
+            if [ ! -e $destDir/$sraFile ]; then
+                echo "$sraFile was not retrieved using $sraName" 1>&2
+                returnCode=9
+            else
+                if [ "$destDir/$sraFile" != "$destFile" ]; then
+                    mv "$destDir/$sraFile" "$destFile"
+                fi
+            fi
+        fi
+    fi
+
+    return $returnCode
+}
+
 # Run a command/function in a time-limited fashion
 
 function run_timed_cmd { 
@@ -414,7 +540,7 @@ function run_timed_cmd {
         # Process still running - kill it at the timeout
 
         if [ $? -eq 0 ]; then
-            if [ "$sleep" -eq $timeout ]; then
+            if [ "$slept" -eq "$timeout" ]; then
 
                 # For some reason the below doesn't always work, so kill child
                 # processes explicitly first
@@ -447,7 +573,9 @@ probe_ena_methods() {
 
     local probe_file=${1:-''}
     local tempdir=$(get_temp_dir)
-    
+    local allowedDownloadMethods=${ALLOWED_DOWNLOAD_METHODS:-'ftp http ssh'}
+    local testFile=   
+ 
     if [ -z "$probe_file" ]; then
         probe_file=$tempdir/fastq_provider.probe
     fi
@@ -460,9 +588,9 @@ probe_ena_methods() {
     # before giving up
 
     local have_working_method=0
-    
+   
     for try in 1 2 3; do
-        for method in $ALLOWED_DOWNLOAD_METHODS; do
+        for method in $allowedDownloadMethods; do
             echo "Testing method $method for ${try}th time..." 1>&2
 
             local testOutput=$tempdir/${method}_test.fq.gz
@@ -516,6 +644,8 @@ probe_ena_methods() {
 
 update_ena_probe() {
 
+    local tempdir=$(get_temp_dir)
+    local probeUpdateFreqMins=${PROBE_UPDATE_FREQ_MINS:-15}
     local probe_file=$tempdir/fastq_provider.probe
 
     if [ ! -e $probe_file ]; then
@@ -523,10 +653,9 @@ update_ena_probe() {
         probe_ena_methods
         echo "Done with probe" 1>&2
     fi
-
     local probe_age=$(file_age $probe_file mins)
-    if (( $(echo "$probe_age > $PROBE_UPDATE_FREQ_MINS" |bc -l) )); then
-        echo "Probe file is older than $PROBE_UPDATE_FREQ_MINS mins (at $probe_age mins), updating" 1>&2
+    if (( $(echo "$probe_age > $probeUpdateFreqMins" |bc -l) )); then
+        echo "Probe file is older than $probeUpdateFreqMins mins (at $probe_age mins), updating" 1>&2
         # Touch to stop other processes from noticing it's out of date
         touch $probe_file
         probe_ena_methods > /dev/null 2>&1
@@ -569,6 +698,7 @@ select_ena_download_method() {
     
     local tempdir=$(get_temp_dir)
     local probe_file=$tempdir/fastq_provider.probe
+    echo "probe file: $probe_file" 1>&2
     update_ena_probe
 
     local ordered_methods='None'
@@ -607,6 +737,7 @@ fetch_file_from_ena_auto() {
     local retries=${3:-3}
     local library=${4:-''}
     local validateOnly=${5:-''}
+    local downloadType=${6:-'fastq'}
 
     check_variables "enaFile" "destFile"
     
@@ -625,12 +756,11 @@ fetch_file_from_ena_auto() {
     fi
 
     local exitCode=
-
     for i in $(seq 1 $retries); do 
         for method in $methods; do
             echo "Fetching $enaFile using method $method, attempt $i"
             function="fetch_file_from_ena_over_$method"
-            $function $enaFile $destFile 1 "$library" "$validateOnly" 
+            $function $enaFile $destFile 1 "$library" "$validateOnly" "$downloadType"
             
             exitCode=$?
             if [ $exitCode -eq 0 ]; then 
@@ -652,7 +782,9 @@ fetch_file_from_ena_over_ssh() {
     local retries=${3:-3}
     local library=${4:-''}
     local validateOnly=${5:-''}
-    local status=${6:-'public'}
+    local downloadType=${6:-'fastq'}
+    local status=${7:-'public'}
+    local tempdir=$(get_temp_dir)
 
     check_variables "enaFile" "destFile"
 
@@ -696,7 +828,7 @@ fetch_file_from_ena_over_ssh() {
     local sshTempFile=${destFile}.tmp
 
     if [ "$sudoString" != '' ]; then
-        local sshTempDir=${FASTQ_PROVIDER_TEMPDIR}/ssh
+        local sshTempDir=$tempdir/ssh
         mkdir -p $sshTempDir
         chmod a+rwx $sshTempDir
         sshTempFile=$sshTempDir/$(basename ${destFile}).tmp
@@ -746,11 +878,12 @@ fetch_file_from_ena_over_http() {
     local retries=${3:-3}
     local library=${4:-''}
     local validateOnly=${5:-''}
+    local downloadType=${6:-'fastq'}
 
     check_variables "enaFile" "destFile"
 
     # Convert
-    local enaPath=$(convert_ena_fastq_to_uri $enaFile http $library)
+    local enaPath=$(convert_ena_fastq_to_uri $enaFile http "$library" "$downloadType")
     
     # Fetch
     fetch_file_by_wget $enaPath $destFile $retries http ena $validateOnly
@@ -762,11 +895,12 @@ fetch_file_from_ena_over_ftp() {
     local retries=${3:-3}
     local library=${4:-''}
     local validateOnly=${5:-''}
+    local downloadType=${6:-'fastq'}
 
     check_variables "enaFile" "destFile"
-    
+ 
     # Convert
-    local enaPath=$(convert_ena_fastq_to_uri $enaFile ftp $library)
+    local enaPath=$(convert_ena_fastq_to_uri $enaFile ftp "$library" "$downloadType")
 
     # Fetch
     fetch_file_by_wget $enaPath $destFile $retries ftp ena $validateOnly
@@ -778,25 +912,31 @@ convert_ena_fastq_to_ssh_path(){
     local fastq=$1
     local status=${2:-'public'}
     local library=${3:-''}
+    local returnCode=0
 
     local fastq=$(basename $fastq)
     if [ "$status" == 'private' ]; then
         if [ "$library" == '' ]; then
             echo "ERROR: For private FASTQ files, the library cannot be inferred from the file name and must be specified" 1>&2
-            return 1
+            returnCode=1
         fi 
     else
-        library=$(echo $fastq | grep -o "[SED]RR[0-9]*")
+        library=$(get_library_id_from_uri $fastq)
+        returnCode=$?
     fi
 
-    local libDir=
-    if [ "$status" == 'private' ]; then
-        libDir=$(dirname $(get_library_path $library $ENA_PRIVATE_SSH_ROOT_DIR 'short'))
+    if [ $returnCode -ne 0 ]; then
+        return $returnCode
     else
-        libDir=$(dirname $(get_library_path $library $ENA_SSH_ROOT_DIR))
-    fi
+        local libDir=
+        if [ "$status" == 'private' ]; then
+            libDir=$(dirname $(get_library_path $library $ENA_PRIVATE_SSH_ROOT_DIR 'short'))
+        else
+            libDir=$(dirname $(get_library_path $library $ENA_SSH_ROOT_DIR/fastq))
+        fi
 
-    echo $libDir/$fastq
+        echo $libDir/$fastq
+    fi
 }
 
 # Convert an SRA-style file to its URI 
@@ -805,19 +945,30 @@ convert_ena_fastq_to_uri() {
     local fastq=$1
     local uriType=${2}
     local library=${3:-''}
+    local downloadType=${4:-'fastq'}
+    local returnCode=0
 
-    local fastq=$(basename $fastq)
-
+    # .sra file downloads are just like
+    # https://hx.fire.sdo.ebi.ac.uk/fire/public/sra/srr/SRR100/061/SRR10009461
+    # (so just looks like the dir if this was for an FTP file)
     if [ "$library" == '' ]; then
-         library=$(echo $fastq | grep -o "[SED]RR[0-9]*")
+        library=$(get_library_id_from_uri $fastq)
+        returnCode=$?
     fi
+    
+    if [ $returnCode -eq 0 ]; then
+        if [ "$downloadType" = 'fastq' ]; then
+            fastq="/$(basename $fastq)"
+        else
+            fastq=''
+        fi
 
-    local libDir=$(dirname $(get_library_path $library))
-
-    if [ "$uriType" == 'http' ]; then
-        echo ${ENA_HTTP_ROOT_PATH}/$libDir/$fastq
-    else
-        echo ${ENA_FTP_ROOT_PATH}/$libDir/$fastq
+        local libDir=$(dirname $(get_library_path $library))
+        if [ "$uriType" == 'http' ]; then
+            echo ${ENA_HTTP_ROOT_PATH}/$downloadType/$libDir$fastq
+        else
+            echo ${ENA_FTP_ROOT_PATH}/$downloadType/$libDir$fastq
+        fi
     fi
 }
 
@@ -847,6 +998,7 @@ get_library_listing() {
     local library=$1
     local method=${2:-'ssh'}    
     local status=${3:-'public'}
+    local tempdir=$(get_temp_dir)
 
     check_variables 'library'
 
@@ -855,10 +1007,10 @@ get_library_listing() {
         if [ "$status" == 'private' ]; then
             libDir=$(dirname $(get_library_path $library $ENA_PRIVATE_SSH_ROOT_DIR 'short'))
         else
-            libDir=$(dirname $(get_library_path $library $ENA_SSH_ROOT_DIR))
+            libDir=$(dirname $(get_library_path $library $ENA_SSH_ROOT_DIR/fastq))
         fi
     else
-        libDir=$(dirname $(get_library_path $library $ENA_FTP_ROOT_PATH))
+        libDir=$(dirname $(get_library_path $library $ENA_FTP_ROOT_PATH/fastq))
     fi
     
     if [ "$method" == 'ssh' ]; then
@@ -877,7 +1029,7 @@ get_library_listing() {
         # anything other than '.listing', and we therefore get clashes with
         # multiple downloads at once         
 
-        local listingDir="${FASTQ_PROVIDER_TEMPDIR}/${library}_listing"
+        local listingDir="$tempdir/${library}_listing"
         mkdir -p $listingDir
 
         pushd $listingDir > /dev/null
@@ -904,6 +1056,7 @@ fetch_library_files_from_ena() {
     local retries=${3:-3}
     local method=${4:-'auto'}
     local status=${5:-'public'}
+    local downloadType=${6:-'fastq'}
 
     check_variables 'library'
 
@@ -928,7 +1081,7 @@ fetch_library_files_from_ena() {
                 fetchMethod="fetch_file_from_ena_over_$method"
             fi
 
-            $fetchMethod $l $outputDir/$fileName $retries $library "" $status
+            $fetchMethod $l $outputDir/$fileName $retries $library "" "$downloadType" $status
             local returnCode=$?
             if [ $returnCode -ne 0 ]; then
                 return $returnCode
@@ -951,11 +1104,16 @@ guess_file_source() {
     if [ $? -eq 0 ]; then
         fileSource='hca'
     else
-        echo $(basename $sourceFile) | grep "[EDS]RR[0-9]*" > /dev/null
+        echo $sourceFile | grep -E "(^sra/)" > /dev/null
         if [ $? -eq 0 ]; then
-            fileSource='ena'
+            fileSource='sra'
         else
-            echo "Cannot automatically determine source for $sourceFile" 1>&2
+            echo $(basename $sourceFile) | grep "[EDS]RR[0-9]*" > /dev/null
+            if [ $? -eq 0 ]; then
+                fileSource='ena'
+            else
+                echo "Cannot automatically determine source for $sourceFile" 1>&2
+            fi
         fi
     fi
     
