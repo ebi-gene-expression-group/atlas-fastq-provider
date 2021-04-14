@@ -279,6 +279,7 @@ time_since_last() {
         return 0
     else 
         # Just a really big number
+        touch $testfile
         echo 1000000000000
         return 1
     fi
@@ -363,20 +364,18 @@ fetch_file_by_wget() {
 
     local wgetTempFile=${destFile}.tmp
     rm -f $wgetTempFile
-
     local process_status=1
     for i in $(seq 1 $retries); do 
         if [ "$method" != '' ]; then
             wait_and_record ${source}_$method
         fi
-
         wget  -nv -c $sourceFile -O $wgetTempFile 
         if [ $? -eq 0 ]; then
             process_status=0
             break
         fi
     done
-    
+ 
     if [ $process_status -ne 0 ] || [ ! -s $wgetTempFile ] ; then
         echo "ERROR: Failed to retrieve $enaPath to ${destFile}" 1>&2
         rm -f $wgetTempFile 
