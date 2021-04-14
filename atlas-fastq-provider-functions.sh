@@ -12,22 +12,21 @@ get_library_path() {
     local prefix=
     if ! [[ $subDir =~ "ENC" ]] && [[ -z "$forceShortForm" ]] ; then
         local num=${library:3}
-       
-        # ENA pattern is:
-        # 
-        # - 6-digit codes under e.g. SRR123456
-        # - 7-digit codes under e.g. 007/SRR1234567
-        # - 8-digit codes under e.g. 078/SRR12345678
-        #
-        # i.e. we zero-pad to three digits anything after and including the
-        # 10th digit
+        if [ $num -gt 1000000 ]; then
 
-        if [[ "$num" =~ ^[0-9]+$ ]]; then
-            if [ $num -gt 1000000 ]; then
-                digits=${library:9}
-                prefix="$(printf %03d  ${digits##+(0)})/"    
-            fi
-        fi 
+            # ENA pattern is:
+            # 
+            # - 6-digit codes under e.g. SRR123456
+            # - 7-digit codes under e.g. 007/SRR1234567
+            # - 8-digit codes under e.g. 078/SRR12345678
+            #
+            # i.e. we zero-pad to three digits anything after and including the
+            # 10th digit. Where we have e.g. '09' we need to strip leading
+            # zeros to prevent octal errors with bash.
+
+            digits=$(echo ${library:9} | sed 's/^0*//');
+            prefix="$(printf %03d $digits)/"
+        fi
     fi
     echo "${rootDir}/${subDir}/${prefix}${library}/${library}"
 }
