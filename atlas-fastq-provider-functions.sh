@@ -456,6 +456,20 @@ function fetch_library_files_from_sra_file() {
             hash fastq-dump 2>/dev/null || { echo >&2 "The NCBI fastq-dump tool is required,  but it's not installed.  Aborting."; exit 1; }
             fastq-dump -I --split-files $library
             if [ $? -eq 0 ]; then
+                nlines=
+                lastfile=
+                ls *.fastq | while read -r l; do
+                    filelines=$(cat $l | wc -l)
+                    if [ -n "$nlines" ] && [ "$nlines" -ne "$filelines" ]; then
+                        echo "Line number mismatch ($filelines in $l vs $nlines in $lastfile)- download and unpacking has likely not happened correctly" 1>&2
+                        returnCode=9
+                        break
+                    else
+                        nlines=$filelines
+                        lastfile=$l
+                    fi
+                done
+
                 gzip *.fastq
                 mv *.fastq.gz $outputDir
             else
