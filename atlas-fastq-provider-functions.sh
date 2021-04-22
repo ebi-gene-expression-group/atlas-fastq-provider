@@ -458,7 +458,7 @@ function fetch_library_files_from_sra_file() {
             if [ $? -eq 0 ]; then
                 nlines=
                 lastfile=
-                ls *.fastq | while read -r l; do
+                while read -r l; do
                     filelines=$(wc -l < $l)                   
                     if [ -n "$nlines" ] && [ "$nlines" -ne "$filelines" ]; then
                         echo "Line number mismatch ($filelines in $l vs $nlines in $lastfile)- download and unpacking has likely not happened correctly" 1>&2
@@ -468,9 +468,9 @@ function fetch_library_files_from_sra_file() {
                         nlines=$filelines
                         lastfile=$l
                     fi
-                done
+                done <<< "$(ls *.fastq)"
 
-                gzip *.fastq
+                gzip -f *.fastq
                 mv *.fastq.gz $outputDir
             else
                 returnCode=9
