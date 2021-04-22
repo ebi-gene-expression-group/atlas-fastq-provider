@@ -13,6 +13,8 @@ setup() {
     sra_file_ftp="${output_dir}/SRR10069860_1.sra.ftp.fastq.gz"
     sra_file_http="${output_dir}/SRR10069860_1.sra.http.fastq.gz"
     sra_file_lib_ftp="${output_dir}/SRR10069860_1.fastq.gz"
+    non_ena_sra="sra/https://sra-download.ncbi.nlm.nih.gov/traces/sra43/SRR/010931/SRR11194113/SRR11194113_3.fastq.gz"
+    non_ena_sra_file="${output_dir}/SRR11194113_3.fastq.gz"
     export NOPROBE=1    
 
     if [ ! -d "$data_dir" ]; then
@@ -45,6 +47,17 @@ setup() {
     [ "$status" -eq 0 ]
     [ -f "$sra_file_ftp" ]
 }
+
+#@test "Download and unpack non-ENA SRA file from FTP, providing prefixed link" {
+#    if  [ "$resume" = 'true' ] && [ -f "$non_ena_sra_file" ]; then
+#        skip "$non_ena_sra_file exists"
+#    fi
+#
+#    run rm -rf $non_ena_sra_file && eval "./fetchFastq.sh -f $non_ena_sra -m ftp -t $non_ena_sra_file"
+#
+#    [ "$status" -eq 0 ]
+#    [ -f "$non_ena_sra_file" ]
+#}
 
 @test "Download and unpack SRA file from FTP, providing just a library identifier" {
     if  [ "$resume" = 'true' ] && [ -f "$sra_file_lib_ftp" ]; then

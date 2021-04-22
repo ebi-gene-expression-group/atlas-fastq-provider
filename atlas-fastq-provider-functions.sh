@@ -416,7 +416,7 @@ function fetch_file_by_hca {
 # Get all the files from an SRA file for a library
 
 function fetch_library_files_from_sra_file() {
-    local library=$1
+    local sraFile=$1
     local outputDir=${2:-"$(pwd)"}
     local retries=${3:-3}
     local method=${4:-'auto'}
@@ -424,7 +424,10 @@ function fetch_library_files_from_sra_file() {
     local tempdir=$(get_temp_dir)
     local returnCode=0
 
-    check_variables 'library' 'outputDir'
+    check_variables 'sraFile' 'outputDir'
+
+    local library
+    library=$(get_library_id_from_uri $sraFile)
 
     local sourceFile=$(dirname $(get_library_path $library $ENA_FTP_ROOT_PATH/srr))
     outputDir=$(realpath $outputDir)
@@ -449,6 +452,14 @@ function fetch_library_files_from_sra_file() {
     if [ ! -e $library ]; then
         $fetchMethod $library $library $retries "" "" "srr" $status
         returnCode=$?
+        
+        # Fall back to a simple wget in case the SRA file is not in ENA
+
+        if [ $returnCode -ne 0 ]; then
+            echo "Failed to get SRA file $sraFile from ENA, now trying a simple wget" 1>&2
+            fetch_file_by_wget $sraFile $library
+            returnCode=$?
+        fi
     fi
 
     if [ $returnCode -eq 0 ]; then
@@ -510,12 +521,9 @@ function fetch_file_by_sra {
 
     local sraUri=$(dirname $sourceFile)
     local sraFile=$(echo -e "$sourceFile"| awk -F "/" '{print $NF}')
-    local library=
-    library=$(get_library_id_from_uri $sourceFile)
-    returnCode=$?
 
     if [ $returnCode -eq 0 ]; then
-        fetch_library_files_from_sra_file "$library" "$destDir" "$retries" "$method" "$status" 
+        fetch_library_files_from_sra_file "$sraUri" "$destDir" "$retries" "$method" "$status" 
         returnCode=$?
         
         if [ $returnCode -eq 0 ]; then
