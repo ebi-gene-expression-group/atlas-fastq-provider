@@ -114,7 +114,7 @@ fetchEnaLibraryFastqs.sh -l ERR1888646 -d ERR1888646 -t srr
 Files from the HCA can be downloaded given pseudo-URI formed like:
 
 ```
-fetchFastq.sh -f hca://<bundle>/<bundle version>/<file> -t <dest file>
+fetchFastq.sh -f hca://<bundle>/<file> -t <dest file>
 ```
 
 ... or by manually specifying method like:
