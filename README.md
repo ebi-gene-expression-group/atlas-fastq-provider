@@ -114,19 +114,19 @@ fetchEnaLibraryFastqs.sh -l ERR1888646 -d ERR1888646 -t srr
 Files from the HCA can be downloaded given pseudo-URI formed like:
 
 ```
-fetchFastq.sh -f hca://<bundle>/<bundle version>/<file> -t <dest file>
+fetchFastq.sh -f hca://<bundle>/<file> -t <dest file>
 ```
 
 ... or by manually specifying method like:
 
 ```
-fetchFastq.sh -m hca -f <bundle>/<bundle version>/<file> -t <dest file>
+fetchFastq.sh -m hca -f <bundle>/<file> -t <dest file>
 ```
 
-This just passes the bundle UUID and version, along with the file filter, to the [hca client](https://pypi.org/project/hca/) (where installed).
+This just passes the bundle UUID, along with the file filter, to [azul](https://service.azul.data.humancellatlas.org/#/Index/get_index_bundles__bundle_id_), which provides links to the fastq files, which can then be downloaded.
 
 A real example is:
 
 ```
-fetchFastq.sh -f hca://0359ab85-bb92-4e6e-a819-12aa734ed12b/2019-07-12T135804.102000Z/10X127_1_S28_L001_I1_001.fastq.gz -t foo.fastq.gz
+fetchFastq.sh -f hca://0359ab85-bb92-4e6e-a819-12aa734ed12b/10X127_1_S28_L001_I1_001.fastq.gz -t foo.fastq.gz
 ```
