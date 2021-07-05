@@ -392,24 +392,36 @@ function fetch_file_by_hca {
     local sourceFile=$1
     local destFile=$2
 
+    local exitcode=
+
     sourceFile="${sourceFile#hca://}"
     sourceFile="${sourceFile#hca/}"
     local sourceFileName=$(basename $sourceFile)
+    local bundle=$(echo $sourceFile | awk -F'/' '{print $1}')
 
-    local uuid=$(echo $sourceFile | awk -F'/' '{print $1}')
-    local version=$(echo $sourceFile | awk -F'/' '{print $2}')
-
-    local exitcode=
-    hca dss download --bundle-uuid $uuid --version $version --download-dir . --replica aws --no-metadata --data-filter $sourceFileName
-    exitCode=$?
-    
-    if [ $exitCode -ne 0 ]; then
-        exitCode= 8
+    bundle_content=$(curl -X GET "https://service.azul.data.humancellatlas.org/index/bundles/$bundle?catalog=dcp6" -H "accept: application/json" | jq '.files[] | select(.name=="'$sourceFileName'")')
+    if [ $? -ne 0 ]; then
+        echo "Can't get bundle content for UUID $bundle" 1>&2
+        exitcode=8
     else
-        mv ${uuid}.${version}/$sourceFileName $destFile
+        url=$(echo "$bundle_content" | jq -r '.url')
+        sha256=$(echo "$bundle_content" | jq -r '.sha256')
+
+        wget -O $destFile $url
+        if [ $? -ne 0 ]; then
+            echo "wget for $sourceFileName in $bundle using URL $url failed" 1>&2
+            exitCode=8
+        fi
+
+        file_md5sum=$(md5sum $destFile | awk '{print $1}')
+        if [ "$file_md5sum" != "$sha256" ]; then
+            echo "File checksums for $sourceFileName in bundle $bundle good"
+        else
+            echo "File checksums for $sourceFileName in bundle $bundle bad" 1>&2
+            exitCode=8
+        fi
     fi
-        
-    rm -rf ${uuid}.${version} .hca
+
     return $exitCode
 }
 
