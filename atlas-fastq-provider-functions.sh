@@ -398,7 +398,9 @@ function fetch_file_by_hca {
     sourceFile="${sourceFile#hca/}"
     local sourceFileName=$(basename $sourceFile)
     local bundle=$(echo $sourceFile | awk -F'/' '{print $1}')
-    local bundle_uri=$(echo $DCP_BUNDLE_URI | sed "s/BUNDLE/$bundle/g")
+    
+    local bundleUriTemplate=${DCP_BUNDLE_URI:-'https://service.azul.data.humancellatlas.org/index/bundles/BUNDLE?catalog=dcp7'}
+    local bundle_uri=$(echo $bundleUriTemplate | sed "s/BUNDLE/$bundle/g")
 
     bundle_content=$(curl -X GET "$bundle_uri" -H "accept: application/json" | jq '.files[] | select(.name=="'$sourceFileName'")')
     if [ $? -ne 0 ]; then
