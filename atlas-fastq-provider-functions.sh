@@ -398,8 +398,9 @@ function fetch_file_by_hca {
     sourceFile="${sourceFile#hca/}"
     local sourceFileName=$(basename $sourceFile)
     local bundle=$(echo $sourceFile | awk -F'/' '{print $1}')
+    local bundle_uri=$(echo $DCP_BUNDLE_URI | sed "s/BUNDLE/$bundle/g")
 
-    bundle_content=$(curl -X GET "https://service.azul.data.humancellatlas.org/index/bundles/$bundle?catalog=dcp6" -H "accept: application/json" | jq '.files[] | select(.name=="'$sourceFileName'")')
+    bundle_content=$(curl -X GET "$bundle_uri" -H "accept: application/json" | jq '.files[] | select(.name=="'$sourceFileName'")')
     if [ $? -ne 0 ]; then
         echo "Can't get bundle content for UUID $bundle" 1>&2
         exitcode=8

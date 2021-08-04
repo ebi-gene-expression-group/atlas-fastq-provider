@@ -11,3 +11,4 @@ ENA_RETRIES=3
 #ALLOWED_DOWNLOAD_METHODS='http ftp ssh'
 ALLOWED_DOWNLOAD_METHODS='http ftp'
 ENA_SSH_USER=
+DCP_BUNDLE_URI=https://service.azul.data.humancellatlas.org/index/bundles/BUNDLE?catalog=dcp7
