@@ -403,6 +403,8 @@ function fetch_file_by_hca {
     local bundleCatalogs=${DCP_BUNDLE_CATALOGS:-'dcp1 dcp7'}
     local bundleUri=$(echo $bundleUriTemplate | sed "s/BUNDLE/$bundle/g")
 
+    # Check multiple catalogs for this bundle UUID
+
     for catalog in ${bundleCatalogs}; do
         json_response=$(curl -X GET "${bundleUri}?catalog=$catalog" -H "accept: application/json")
         if [ $(echo "$json_response"| jq  -e 'has("files")') != 'true' ]; then
@@ -418,16 +420,20 @@ function fetch_file_by_hca {
                 wget -O $destFile $url
                 if [ $? -ne 0 ]; then
                     echo "wget for $sourceFileName in $bundle using URL $url failed" 1>&2
+                else
+                    file_md5sum=$(md5sum $destFile | awk '{print $1}')
+                    if [ "$file_md5sum" != "$sha256" ]; then
+                        echo "File checksums for $sourceFileName in bundle $bundle good"
+                        exitCode=0
+                        break
+                    else
+                        echo "File checksums for $sourceFileName in bundle $bundle bad" 1>&2
+                    fi
                 fi
 
-                file_md5sum=$(md5sum $destFile | awk '{print $1}')
-                if [ "$file_md5sum" != "$sha256" ]; then
-                    echo "File checksums for $sourceFileName in bundle $bundle good"
-                    exitCode=0
-                    break
-                else
-                    echo "File checksums for $sourceFileName in bundle $bundle bad" 1>&2
-                fi
+                # We found right catalog even if the file was corrupted etc, so
+                # break here regardless
+                break
             fi
         fi    
     done
