@@ -392,38 +392,51 @@ function fetch_file_by_hca {
     local sourceFile=$1
     local destFile=$2
 
-    local exitcode=
+    local exitcode=8
 
     sourceFile="${sourceFile#hca://}"
     sourceFile="${sourceFile#hca/}"
     local sourceFileName=$(basename $sourceFile)
     local bundle=$(echo $sourceFile | awk -F'/' '{print $1}')
     
-    local bundleUriTemplate=${DCP_BUNDLE_URI:-'https://service.azul.data.humancellatlas.org/index/bundles/BUNDLE?catalog=dcp7'}
-    local bundle_uri=$(echo $bundleUriTemplate | sed "s/BUNDLE/$bundle/g")
+    local bundleUriTemplate=${DCP_BUNDLE_URI:-'https://service.azul.data.humancellatlas.org/index/bundles/BUNDLE'}
+    local bundleCatalogs=${DCP_BUNDLE_CATALOGS:-'dcp1 dcp7'}
+    local bundleUri=$(echo $bundleUriTemplate | sed "s/BUNDLE/$bundle/g")
 
-    bundle_content=$(curl -X GET "$bundle_uri" -H "accept: application/json" | jq '.files[] | select(.name=="'$sourceFileName'")')
-    if [ $? -ne 0 ]; then
-        echo "Can't get bundle content for UUID $bundle" 1>&2
-        exitcode=8
-    else
-        url=$(echo "$bundle_content" | jq -r '.url')
-        sha256=$(echo "$bundle_content" | jq -r '.sha256')
+    # Check multiple catalogs for this bundle UUID
 
-        wget -O $destFile $url
-        if [ $? -ne 0 ]; then
-            echo "wget for $sourceFileName in $bundle using URL $url failed" 1>&2
-            exitCode=8
-        fi
-
-        file_md5sum=$(md5sum $destFile | awk '{print $1}')
-        if [ "$file_md5sum" != "$sha256" ]; then
-            echo "File checksums for $sourceFileName in bundle $bundle good"
+    for catalog in ${bundleCatalogs}; do
+        json_response=$(curl -X GET "${bundleUri}?catalog=$catalog" -H "accept: application/json")
+        if [ $(echo "$json_response"| jq  -e 'has("files")') != 'true' ]; then
+            echo "Failed to find files for bundle $bundle in ${catalog}, response was $json_response" 1>&1
         else
-            echo "File checksums for $sourceFileName in bundle $bundle bad" 1>&2
-            exitCode=8
-        fi
-    fi
+            bundle_content=$(echo "$json_response" | jq '.files[] | select(.name=="'$sourceFileName'")')
+            if [ $? -ne 0 ]; then
+                echo "Can't get bundle content for UUID $bundle" 1>&2
+            else
+                url=$(echo "$bundle_content" | jq -r '.url')
+                sha256=$(echo "$bundle_content" | jq -r '.sha256')
+
+                wget -O $destFile $url
+                if [ $? -ne 0 ]; then
+                    echo "wget for $sourceFileName in $bundle using URL $url failed" 1>&2
+                else
+                    file_md5sum=$(md5sum $destFile | awk '{print $1}')
+                    if [ "$file_md5sum" != "$sha256" ]; then
+                        echo "File checksums for $sourceFileName in bundle $bundle good"
+                        exitCode=0
+                        break
+                    else
+                        echo "File checksums for $sourceFileName in bundle $bundle bad" 1>&2
+                    fi
+                fi
+
+                # We found right catalog even if the file was corrupted etc, so
+                # break here regardless
+                break
+            fi
+        fi    
+    done
 
     return $exitCode
 }
