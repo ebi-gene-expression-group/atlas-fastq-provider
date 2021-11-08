@@ -132,7 +132,8 @@ elif [ "$method" != 'wget' ]; then
         fi
     
     elif [ "$fileSource" != 'sra' ]; then
-        echo "No special procedures implemented for $fileSource. Please use 'wget' or 'dir'." 
+        echo "No special procedures implemented for $fileSource file source, should be 'wget' or 'dir'. Falling back to wget." 
+        method='wget'
     fi
 
 fi
