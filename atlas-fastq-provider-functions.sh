@@ -313,7 +313,7 @@ wait_and_record() {
     last_time=$(time_since_last $action)
     while [ $? -ne 0 ] || (( $(echo "$last_time < $fetchFreqMillis" |bc -l) )); do
         # Sleep for 1/100th of a second
-        usleep 10000 
+        sleep 0.01 
 
         # Check last_time again- other processes could have altered it
         last_time=$(time_since_last $action)
@@ -370,14 +370,25 @@ fetch_file_by_wget() {
             wait_and_record ${source}_$method
         fi
         wget  -nv -c $sourceFile -O $wgetTempFile 
+        wget_status=$?
+        
+        # If this is a gzip file, we can test its integrity
+
+        gzip_status=0
+        echo "$sourceFile" | grep '\.gz$' > /dev/null   
         if [ $? -eq 0 ]; then
+            gzip -t $wgetTempFile > /dev/null
+            gzip_status=$?
+        fi 
+
+        if [ $wget_status -eq 0 ] && [ $gzip_status -eq 0 ]; then
             process_status=0
             break
         fi
     done
  
     if [ $process_status -ne 0 ] || [ ! -s $wgetTempFile ] ; then
-        echo "ERROR: Failed to retrieve $enaPath to ${destFile}" 1>&2
+        echo "ERROR: Failed to retrieve $sourceFile to ${destFile}" 1>&2
         rm -f $wgetTempFile 
         return 1
     else
