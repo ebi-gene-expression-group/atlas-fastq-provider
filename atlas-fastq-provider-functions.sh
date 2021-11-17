@@ -374,7 +374,7 @@ fetch_file_by_wget() {
         
         # If this is a gzip file, we can test its integrity
 
-        $gzip_status = 0
+        gzip_status=0
         echo "$sourceFile" | grep '\.gz$' > /dev/null   
         if [ $? -eq 0 ]; then
             gzip -t $wgetTempFile > /dev/null
