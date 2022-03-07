@@ -321,6 +321,26 @@ wait_and_record() {
     record_action $action
 }
 
+# Verify a .gz file
+
+verify_gz(){
+    local gzfile=$1
+
+    local gzstat=0
+
+    echo "... Verifying $gzfile integrity"
+    gzip_status=0
+    gzip -t $gzfile > /dev/null
+    gzip_status=$?
+    if [ $gzip_status -ne 0 ]; then
+        echo "... $gzfile file seems corrupt/ truncated"
+        gzstat=1 
+    else
+        echo "... $gzfile looks good"
+    fi
+    return $gzstat
+}
+
 # Fetch a URI by wget
 
 fetch_file_by_wget() {
@@ -359,35 +379,41 @@ fetch_file_by_wget() {
 
     # All being well proceed with the download
 
-    echo "Downloading $sourceFile to $(realpath $destFile) using wget"
     mkdir -p $(dirname $destFile)
-
     local wgetTempFile=${destFile}.tmp
-    rm -f $wgetTempFile
-    local process_status=1
+    local fetch_status=1
+    
     for i in $(seq 1 $retries); do 
+        echo "Downloading $sourceFile to $(realpath $destFile) using wget"
+        
+        rm -f $wgetTempFile
         if [ "$method" != '' ]; then
             wait_and_record ${source}_$method
         fi
-        wget  -nv -c $sourceFile -O $wgetTempFile 
-        wget_status=$?
+        response=$(wget  -nv -c $sourceFile -O $wgetTempFile 2>&1) 
+        fetch_status=$?
         
-        # If this is a gzip file, we can test its integrity
-
-        gzip_status=0
-        echo "$sourceFile" | grep '\.gz$' > /dev/null   
-        if [ $? -eq 0 ]; then
-            gzip -t $wgetTempFile > /dev/null
-            gzip_status=$?
-        fi 
-
-        if [ $wget_status -eq 0 ] && [ $gzip_status -eq 0 ]; then
-            process_status=0
-            break
+        if [ "$fetch_status" -ne 0 ]; then
+            echo "... wget failed (error was: $response)" 1>&2
+        else 
+            echo "$sourceFile" | grep '\.gz$' > /dev/null   
+            if [ $? -eq 0 ]; then
+                verify_gz $wgetTempFile
+                fetch_status=$?
+            fi
         fi
+        if [ "$fetch_status" -eq "0" ]; then
+            break
+        elif [ "$i" -lt "$retries" ]; then
+            echo "... Retrying..."
+            sleep 1
+        else
+            echo "Unable to fetch $sourceFile after $retries retries"
+        fi
+        rm -f $wgetTempFile
     done
  
-    if [ $process_status -ne 0 ] || [ ! -s $wgetTempFile ] ; then
+    if [ $fetch_status -ne 0 ] || [ ! -s $wgetTempFile ] ; then
         echo "ERROR: Failed to retrieve $sourceFile to ${destFile}" 1>&2
         rm -f $wgetTempFile 
         return 1
