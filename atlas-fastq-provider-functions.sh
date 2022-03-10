@@ -1141,6 +1141,8 @@ get_library_listing() {
 
 # Fetch all available files for a given library
 
+# {relocate logic here and possibly on fetchEnaLibraryFastqs.sh}
+
 fetch_library_files_from_ena() {
     local library=$1
     local outputDir=$2
