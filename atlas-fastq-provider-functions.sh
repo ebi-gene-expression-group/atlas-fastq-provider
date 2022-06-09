@@ -1210,22 +1210,24 @@ fetch_library_files_from_ena() {
             
                 if [ $? -ne 0 ]; then
                     rm -rf ${localFastqPath}*.fastq.gz
-                    die "ERROR: Failed to de-interleave ${localFastqPath}.fastq.gz" 9
+                    echo "ERROR: Failed to de-interleave ${localFastqPath}.fastq.gz"
+                    exit 1
                 else
                     if [ ! -s "${localFastqPath}_1.fastq" ] ||  [ ! -s "${localFastqPath}_2.fastq" ]; then
                         rm -rf ${localFastqPath}*.fastq.gz
-                        die "ERROR: Failed to de-interleave, forward or reverse not generated" 9
+                        echo "ERROR: Failed to de-interleave, forward or reverse not generated"
+                        exit 1
                     fi
                 fi
-                gzip ${localFastqPath}_1.fastq
-                gzip ${localFastqPath}_2.fastq
+                gzip ${localFastqPath}_*.fastq
             fi
             # Whether public or private, downloaded directly or created by
             # de-interleaving, we should now have both read files
 
             for readFile in ${localFastqPath}_1.fastq.gz ${localFastqPath}_2.fastq.gz; do
                 if [ ! -s $readFile ]; then
-                    die "ERROR: Failed to retrieve ${readFile}" 11
+                    echo "ERROR: Failed to retrieve ${readFile}"
+                    exit 1
                 fi
             done
         else
@@ -1246,7 +1248,8 @@ fetch_library_files_from_ena() {
         fi
 
         if [ ! -s "${localFastqPath}.fastq.gz" ]; then
-            die "ERROR: ${localFastqPath}.fastq.gz not present: failed to retrieve $(basename ${localFastqPath}).fastq.gz" 11
+            echo "ERROR: ${localFastqPath}.fastq.gz not present: failed to retrieve $(basename ${localFastqPath}).fastq.gz"
+            exit 1
         fi
     fi
 
