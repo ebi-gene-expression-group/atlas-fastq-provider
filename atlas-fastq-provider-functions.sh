@@ -1141,8 +1141,6 @@ get_library_listing() {
 
 # Fetch all available files for a given library
 
-# {relocate logic here and possibly on fetchEnaLibraryFastqs.sh}
-
 fetch_library_files_from_ena() {
     local library=$1
     local outputDir=$2
@@ -1150,6 +1148,7 @@ fetch_library_files_from_ena() {
     local method=${4:-'auto'}
     local status=${5:-'public'}
     local downloadType=${6:-'fastq'}
+    local sepe=${7:-'PAIRED'}
 
     check_variables 'library'
 
@@ -1182,6 +1181,77 @@ fetch_library_files_from_ena() {
         done 
 
     fi
+
+    # A sleep here to try to deal with cases where we get a success exit code
+    # above, but the file does not exist when checked below. Suspect some sort of
+    # file system latency, so maybe if we wait a bit before checking it will solve
+    # the issue.
+
+    sleep 10
+
+    localFastqPath=${ISL_RAW_DIR}/$(get_library_path $library)
+
+    if [ "$sepe" == "PAIRED" ]; then
+
+        if [ ! -s "${localFastqPath}_1.fastq.gz" ] ||  [ ! -s "${localFastqPath}_2.fastq.gz" ]; then
+    
+            if [ -e "${localFastqPath}_1.fastq.gz" ]; then
+        
+                # Only the _1 file exists, this is a possible interleaved situation                
+
+                mv ${localFastqPath}_1.fastq.gz ${localFastqPath}.fastq.gz
+            fi
+
+            # If we have a single file, see if we can deinterleave it
+
+            if [ -e ${localFastqPath}.fastq.gz ]; then
+                gzip -dc ${localFastqPath}.fastq.gz | deinterleave_fastq.sh ${localFastqPath}_1.fastq ${localFastqPath}_2.fastq
+                # ${IRAP_SOURCE_DIR}/scripts/deinterleave.sh $possibleInterleavedFile ${localFastqPath} 2> /dev/null
+            
+                if [ $? -ne 0 ]; then
+                    rm -rf ${localFastqPath}*.fastq.gz
+                    die "ERROR: Failed to de-interleave ${localFastqPath}.fastq.gz" 9
+                else
+                    if [ ! -s "${localFastqPath}_1.fastq" ] ||  [ ! -s "${localFastqPath}_2.fastq" ]; then
+                        rm -rf ${localFastqPath}*.fastq.gz
+                        die "ERROR: Failed to de-interleave, forward or reverse not generated" 9
+                    fi
+                fi
+                gzip ${localFastqPath}_1.fastq
+                gzip ${localFastqPath}_2.fastq
+            fi
+            # Whether public or private, downloaded directly or created by
+            # de-interleaving, we should now have both read files
+
+            for readFile in ${localFastqPath}_1.fastq.gz ${localFastqPath}_2.fastq.gz; do
+                if [ ! -s $readFile ]; then
+                    die "ERROR: Failed to retrieve ${readFile}" 11
+                fi
+            done
+        else
+            echo "Read files already present"
+        fi
+    else
+        if [ ! -s "${localFastqPath}.fastq.gz" ]; then
+            # According to Dmitri Smirnov, ENA has a bug: 'For some reason we dump
+            # these runs differently as we expect a CONSENSUS to be dumped.  If
+            # there is no CONSENSUS table found inside cSRA container we dump runs
+            # as-is using --split-file option.' This results in single-end FASTQ
+            # files being named <run_id>_1.fastq.gz. They say they will fix it, but
+            # in the meantime, we need to use the following workaround.
+        
+            if [ -s ${localFastqPath}_1.fastq.gz ] && [ ! -s ${localFastqPath}_2.fastq.gz ]; then
+                mv ${localFastqPath}_1.fastq.gz ${localFastqPath}.fastq.gz
+            fi
+        fi
+
+        if [ ! -s "${localFastqPath}.fastq.gz" ]; then
+            die "ERROR: ${localFastqPath}.fastq.gz not present: failed to retrieve $(basename ${localFastqPath}).fastq.gz" 11
+        fi
+    fi
+
+    echo "Retrieved $sepe-END $library from ENA successfully"
+
 }
 
 # Guess the origin of a file
