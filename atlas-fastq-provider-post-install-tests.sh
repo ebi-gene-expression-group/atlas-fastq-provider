@@ -17,8 +17,8 @@ setup() {
     non_ena_sra_file="${output_dir}/SRR11194113_3.fastq.gz"
     export NOPROBE=1
 
-    ena_lib_se="CG2-Bacteria"
-    fastq_file_ftp_se="${output_dir}/SRR11267275.fastq.gz"
+    ena_lib_se="SRR18315788"
+    fastq_file_ftp_se="${output_dir}/SRR18315788.fastq.gz"
 
     if [ ! -d "$data_dir" ]; then
         mkdir -p $data_dir
@@ -47,8 +47,8 @@ setup() {
 
     run rm -rf $fastq_file_ftp_se && eval "fetchEnaLibraryFastqs.sh -l ${ena_lib_se} -d ${output_dir} -t fastq -n PAIRED"
 
-    [ "$status" -eq 0 ]
-    [ -f "$fastq_file_ftp_se" ]
+    [ "$status" -eq 1 ]
+    #[ -f "$fastq_file_ftp_se" ]
 }
 
 @test "Download and unpack SRA file from FTP, providing prefixed link" {
