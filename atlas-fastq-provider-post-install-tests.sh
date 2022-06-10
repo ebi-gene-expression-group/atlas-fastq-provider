@@ -10,14 +10,15 @@ setup() {
     fastq_file_http="${output_dir}/ERR1888172_1.http.fastq.gz"
     sra="sra/ftp://ftp.sra.ebi.ac.uk/vol1/srr/SRR100/060/SRR10069860/SRR10069860_1.fastq.gz"
     sra_lib="SRR10069860"
-    sra_lib_se="SRR19538252"
-    sra_file_lib_ftp_se="${output_dir}/SRR19538252_1.fastq.gz"
     sra_file_ftp="${output_dir}/SRR10069860_1.sra.ftp.fastq.gz"
     sra_file_http="${output_dir}/SRR10069860_1.sra.http.fastq.gz"
     sra_file_lib_ftp="${output_dir}/SRR10069860_1.fastq.gz"
     non_ena_sra="sra/https://sra-download.ncbi.nlm.nih.gov/traces/sra43/SRR/010931/SRR11194113/SRR11194113_3.fastq.gz"
     non_ena_sra_file="${output_dir}/SRR11194113_3.fastq.gz"
     export NOPROBE=1
+
+    ena_lib_se="ERR2163350"
+    fastq_file_ftp_se="${output_dir}/ERR2163350_1.ftp.fastq.gz"
 
     if [ ! -d "$data_dir" ]; then
         mkdir -p $data_dir
@@ -37,6 +38,17 @@ setup() {
 
     [ "$status" -eq 0 ]
     [ -f "$fastq_file_ftp" ]
+}
+
+@test "Download all files from an ENA library as PAIRED-end, providing a SINGLE-end library" {
+    if  [ "$resume" = 'true' ] && [ -f "$fastq_file_ftp_se" ]; then
+        skip "$fastq_file_ftp_se exists"
+    fi
+
+    run rm -rf $fastq_file_ftp_se && eval "fetchEnaLibraryFastqs.sh -l ${ena_lib_se} -d ${output_dir} -t fastq -n PAIRED"
+
+    [ "$status" -eq 0 ]
+    [ -f "$fastq_file_ftp_se" ]
 }
 
 @test "Download and unpack SRA file from FTP, providing prefixed link" {
@@ -72,16 +84,6 @@ setup() {
     [ -f "$sra_file_lib_ftp" ]
 }
 
-@test "Download and unpack SRA file from FTP as PAIRED-end, providing just a SINGLE-end library identifier" {
-    if  [ "$resume" = 'true' ] && [ -f "$sra_file_lib_ftp_se" ]; then
-        skip "$sra_file_lib_ftp_se exists"
-    fi
-
-    run rm -rf $sra_file_lib_ftp_se && eval "fetchEnaLibraryFastqs.sh -l ${sra_lib_se} -d ${output_dir} -m ftp -t srr -n PAIRED"
-
-    [ "$status" -eq 0 ]
-    [ -f "$sra_file_lib_ftp_se" ]
-}
 
 #@test "Download Fastq file from HTTP" {
 #    if  [ "$resume" = 'true' ] && [ -f "$fastq_file_http" ]; then
