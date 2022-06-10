@@ -12,7 +12,7 @@ p=public
 t=fastq
 n=PAIRED
 
-while getopts ":l:d:m:s:p:c:t:" o; do
+while getopts ":l:d:m:s:p:c:t:n:" o; do
     case "${o}" in
         l)
             l=${OPTARG}
