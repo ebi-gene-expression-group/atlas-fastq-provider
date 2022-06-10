@@ -1189,7 +1189,7 @@ fetch_library_files_from_ena() {
 
     sleep 10
 
-    localFastqPath=${ISL_RAW_DIR}/$(get_library_path $library)
+    localFastqPath=${outputDir}/$library
 
     if [ "$sepe" == "PAIRED" ]; then
 
