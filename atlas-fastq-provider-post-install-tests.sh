@@ -17,8 +17,8 @@ setup() {
     non_ena_sra_file="${output_dir}/SRR11194113_3.fastq.gz"
     export NOPROBE=1
 
-    ena_lib_se="ERR2163350"
-    fastq_file_ftp_se="${output_dir}/ERR2163350_1.ftp.fastq.gz"
+    ena_lib_se="CG2-Bacteria"
+    fastq_file_ftp_se="${output_dir}/SRR11267275.fastq.gz"
 
     if [ ! -d "$data_dir" ]; then
         mkdir -p $data_dir
