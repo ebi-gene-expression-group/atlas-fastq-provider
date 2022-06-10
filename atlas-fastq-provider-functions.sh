@@ -1150,7 +1150,10 @@ fetch_library_files_from_ena() {
     local downloadType=${6:-'fastq'}
     local sepe=${7:-'PAIRED'}
 
+    mkdir -p ${outputDir}.tmp
     check_variables 'library'
+
+    filenames_arr=()
 
     local listMethod='ftp'
     if [ "$method" == 'ssh' ]; then
@@ -1166,14 +1169,15 @@ fetch_library_files_from_ena() {
     else
         echo -e "$libraryListing" | while read -r l; do
            local fileName=$(basename $l )
-           echo "Downloading file $fileName for $library to $outputDir"
+           filenames_arr+=(${fileName//_*fastq.gz/});
+           echo "Downloading file $fileName for $library to ${outputDir}.tmp"
             if [ $method == 'auto' ]; then
                 fetchMethod='fetch_file_from_ena_auto'
             else
                 fetchMethod="fetch_file_from_ena_over_$method"
             fi
 
-            $fetchMethod $l $outputDir/$fileName $retries $library "" "$downloadType" $status
+            $fetchMethod $l ${outputDir}.tmp/$fileName $retries $library "" "$downloadType" $status
             local returnCode=$?
             if [ $returnCode -ne 0 ]; then
                 return $returnCode
@@ -1189,70 +1193,79 @@ fetch_library_files_from_ena() {
 
     sleep 10
 
-    localFastqPath=${outputDir}/$library
-
     if [ "$sepe" == "PAIRED" ]; then
 
-        if [ ! -s "${localFastqPath}_1.fastq.gz" ] ||  [ ! -s "${localFastqPath}_2.fastq.gz" ]; then
-    
-            if [ -e "${localFastqPath}_1.fastq.gz" ]; then
+        # get base filenames to be checked
+        uniq=($(printf "%s\n" "${filenames_arr[@]}" | sort -u | tr '\n' ' ' ))
         
-                # Only the _1 file exists, this is a possible interleaved situation                
+        for basefile in "${uniq[@]}"; do
 
-                mv ${localFastqPath}_1.fastq.gz ${localFastqPath}.fastq.gz
-            fi
+            localFastqPath=${outputDir}.tmp/$basefile 
 
-            # If we have a single file, see if we can deinterleave it
+            if [ ! -s "${localFastqPath}_1.fastq.gz" ] ||  [ ! -s "${localFastqPath}_2.fastq.gz" ]; then
+    
+                if [ -e "${localFastqPath}_1.fastq.gz" ]; then
+        
+                    # Only the _1 file exists, this is a possible interleaved situation                
 
-            if [ -e ${localFastqPath}.fastq.gz ]; then
-                gzip -dc ${localFastqPath}.fastq.gz | deinterleave_fastq.sh ${localFastqPath}_1.fastq ${localFastqPath}_2.fastq
-                # ${IRAP_SOURCE_DIR}/scripts/deinterleave.sh $possibleInterleavedFile ${localFastqPath} 2> /dev/null
+                    mv ${localFastqPath}_1.fastq.gz ${localFastqPath}.fastq.gz
+                fi
+
+                # If we have a single file, see if we can deinterleave it
+
+                if [ -e ${localFastqPath}.fastq.gz ]; then
+                    gzip -dc ${localFastqPath}.fastq.gz | deinterleave_fastq.sh ${localFastqPath}_1.fastq ${localFastqPath}_2.fastq
+                    # ${IRAP_SOURCE_DIR}/scripts/deinterleave.sh $possibleInterleavedFile ${localFastqPath} 2> /dev/null
             
-                if [ $? -ne 0 ]; then
-                    rm -rf ${localFastqPath}*.fastq.gz
-                    echo "ERROR: Failed to de-interleave ${localFastqPath}.fastq.gz"
-                    exit 1
-                else
-                    if [ ! -s "${localFastqPath}_1.fastq" ] ||  [ ! -s "${localFastqPath}_2.fastq" ]; then
+                    if [ $? -ne 0 ]; then
                         rm -rf ${localFastqPath}*.fastq.gz
-                        echo "ERROR: Failed to de-interleave, forward or reverse not generated"
+                        echo "ERROR: Failed to de-interleave ${localFastqPath}.fastq.gz"
+                        exit 1
+                    else
+                        if [ ! -s "${localFastqPath}_1.fastq" ] ||  [ ! -s "${localFastqPath}_2.fastq" ]; then
+                            rm -rf ${localFastqPath}*.fastq.gz
+                            echo "ERROR: Failed to de-interleave, forward or reverse not generated"
+                            exit 1
+                        fi
+                    fi
+                    gzip ${localFastqPath}_*.fastq
+                fi
+                # Whether public or private, downloaded directly or created by
+                # de-interleaving, we should now have both read files
+
+                for readFile in ${localFastqPath}_1.fastq.gz ${localFastqPath}_2.fastq.gz; do
+                    if [ ! -s $readFile ]; then
+                        echo "ERROR: Failed to retrieve ${readFile}"
                         exit 1
                     fi
-                fi
-                gzip ${localFastqPath}_*.fastq
+                done
+            else
+                echo "Read files already present"
             fi
-            # Whether public or private, downloaded directly or created by
-            # de-interleaving, we should now have both read files
-
-            for readFile in ${localFastqPath}_1.fastq.gz ${localFastqPath}_2.fastq.gz; do
-                if [ ! -s $readFile ]; then
-                    echo "ERROR: Failed to retrieve ${readFile}"
-                    exit 1
-                fi
-            done
         else
-            echo "Read files already present"
-        fi
-    else
-        if [ ! -s "${localFastqPath}.fastq.gz" ]; then
-            # According to Dmitri Smirnov, ENA has a bug: 'For some reason we dump
-            # these runs differently as we expect a CONSENSUS to be dumped.  If
-            # there is no CONSENSUS table found inside cSRA container we dump runs
-            # as-is using --split-file option.' This results in single-end FASTQ
-            # files being named <run_id>_1.fastq.gz. They say they will fix it, but
-            # in the meantime, we need to use the following workaround.
+            if [ ! -s "${localFastqPath}.fastq.gz" ]; then
+                # ENA has a bug: 'For some reason we dump
+                # these runs differently as we expect a CONSENSUS to be dumped.  If
+                # there is no CONSENSUS table found inside cSRA container we dump runs
+                # as-is using --split-file option.' This results in single-end FASTQ
+                # files being named <run_id>_1.fastq.gz. They say they will fix it, but
+                # in the meantime, we need to use the following workaround.
         
-            if [ -s ${localFastqPath}_1.fastq.gz ] && [ ! -s ${localFastqPath}_2.fastq.gz ]; then
-                mv ${localFastqPath}_1.fastq.gz ${localFastqPath}.fastq.gz
+                if [ -s ${localFastqPath}_1.fastq.gz ] && [ ! -s ${localFastqPath}_2.fastq.gz ]; then
+                    mv ${localFastqPath}_1.fastq.gz ${localFastqPath}.fastq.gz
+                fi
+            fi
+
+            if [ ! -s "${localFastqPath}.fastq.gz" ]; then
+                echo "ERROR: ${localFastqPath}.fastq.gz not present: failed to retrieve $(basename ${localFastqPath}).fastq.gz"
+                exit 1
             fi
         fi
 
-        if [ ! -s "${localFastqPath}.fastq.gz" ]; then
-            echo "ERROR: ${localFastqPath}.fastq.gz not present: failed to retrieve $(basename ${localFastqPath}).fastq.gz"
-            exit 1
-        fi
-    fi
+    done
 
+    cp -a ${outputDir}.tmp/. ${outputDir}/
+    rm -rf ${outputDir}.tmp
     echo "Retrieved $sepe-END $library from ENA successfully"
 
 }
