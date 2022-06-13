@@ -104,6 +104,6 @@ setup() {
 
     run rm -rf $fastq_file_ftp_se && eval "fetchEnaLibraryFastqs.sh -l ${ena_lib_se} -d ${output_dir} -m ftp -t srr -n PAIRED"
 
-    [ "$status" -eq 1 ]
+    [ "$status" -eq 0 ]
     [ -f "$fastq_file_ftp_se" ]
 }
