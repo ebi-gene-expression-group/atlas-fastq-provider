@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash 
+
 # Usage: deinterleave_fastq.sh < interleaved.fastq f.fastq r.fastq [compress]
 # 
 # Deinterleaves a FASTQ file of paired reads into two FASTQ
