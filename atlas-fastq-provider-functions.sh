@@ -1201,6 +1201,7 @@ fetch_library_files_from_ena() {
     if [ "$sepe" == "PAIRED" ]; then
 
         # get base filenames to be checked
+        echo "paired end"
         uniq=($(printf "%s\n" "${filenames_arr[@]}" | sort -u | tr '\n' ' ' ))
         echo "${uniq[@]}" 
         
@@ -1210,7 +1211,7 @@ fetch_library_files_from_ena() {
 
             if [ ! -s "${localFastqPath}_1.fastq.gz" ] ||  [ ! -s "${localFastqPath}_2.fastq.gz" ]; then
     
-                if [ -e "${localFastqPath}_1.fastq.gz" ]; then
+                if [ -s "${localFastqPath}_1.fastq.gz" ]; then
         
                     # Only the _1 file exists, this is a possible interleaved situation                
 
@@ -1219,7 +1220,7 @@ fetch_library_files_from_ena() {
 
                 # If we have a single file, see if we can deinterleave it
 
-                if [ -e ${localFastqPath}.fastq.gz ]; then
+                if [ -s ${localFastqPath}.fastq.gz ]; then
                     echo "Trying to deinterleave a FASTQ file of paired reads into two FASTQ files"
                     gzip -dc ${localFastqPath}.fastq.gz | deinterleave_fastq.sh ${localFastqPath}_1.fastq ${localFastqPath}_2.fastq
                     # ${IRAP_SOURCE_DIR}/scripts/deinterleave.sh $possibleInterleavedFile ${localFastqPath} 2> /dev/null
