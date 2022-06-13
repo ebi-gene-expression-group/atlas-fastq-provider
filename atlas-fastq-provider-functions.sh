@@ -1215,6 +1215,7 @@ fetch_library_files_from_ena() {
                 # If we have a single file, see if we can deinterleave it
 
                 if [ -e ${localFastqPath}.fastq.gz ]; then
+                    echo "Trying to deinterleave a FASTQ file of paired reads into two FASTQ files"
                     gzip -dc ${localFastqPath}.fastq.gz | deinterleave_fastq.sh ${localFastqPath}_1.fastq ${localFastqPath}_2.fastq
                     # ${IRAP_SOURCE_DIR}/scripts/deinterleave.sh $possibleInterleavedFile ${localFastqPath} 2> /dev/null
             
@@ -1246,6 +1247,7 @@ fetch_library_files_from_ena() {
         done
 
     else
+        echo "single end"
         if [ ! -s "${localFastqPath}.fastq.gz" ]; then
             # ENA has a bug: 'For some reason we dump
             # these runs differently as we expect a CONSENSUS to be dumped.  If
