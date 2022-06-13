@@ -1170,7 +1170,11 @@ fetch_library_files_from_ena() {
     else
         echo -e "$libraryListing" | while read -r l; do
            local fileName=$(basename $l )
-           filenames_arr+=(${fileName//_*fastq.gz/});
+           if [ "$sepe" == "PAIRED" ]; then
+              filenames_arr+=(${fileName//_*fastq.gz/});
+           else
+              filenames_arr+=(${fileName//.fastq.gz/});
+           fi
            echo "Downloading file $fileName for $library to ${tempdir}"
             if [ $method == 'auto' ]; then
                 fetchMethod='fetch_file_from_ena_auto'
