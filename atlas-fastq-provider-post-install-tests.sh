@@ -40,17 +40,6 @@ setup() {
     [ -f "$fastq_file_ftp" ]
 }
 
-@test "Download all files from an ENA library as PAIRED-end, providing a SINGLE-end library" {
-    if  [ "$resume" = 'true' ] && [ -f "$fastq_file_ftp_se" ]; then
-        skip "$fastq_file_ftp_se exists"
-    fi
-
-    run rm -rf $fastq_file_ftp_se && eval "fetchEnaLibraryFastqs.sh -l ${ena_lib_se} -d ${output_dir} -t fastq -n PAIRED"
-
-    [ "$status" -eq 1 ]
-    #[ -f "$fastq_file_ftp_se" ]
-}
-
 @test "Download and unpack SRA file from FTP, providing prefixed link" {
     if  [ "$resume" = 'true' ] && [ -f "$sra_file_ftp" ]; then
         skip "$sra_file_ftp exists"
@@ -107,3 +96,14 @@ setup() {
 #    [ "$status" -eq 0 ]
 #    [ -f "$sra_file_http" ]
 #}
+
+@test "Download all files from an ENA library as PAIRED-end, providing a SINGLE-end library" {
+    if  [ "$resume" = 'true' ] && [ -f "$fastq_file_ftp_se" ]; then
+        skip "$fastq_file_ftp_se exists"
+    fi
+
+    run rm -rf $fastq_file_ftp_se && eval "fetchEnaLibraryFastqs.sh -l ${ena_lib_se} -d ${output_dir} -m ftp -t srr -n PAIRED"
+
+    [ "$status" -eq 1 ]
+    [ -f "$fastq_file_ftp_se" ]
+}
