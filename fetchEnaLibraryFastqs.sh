@@ -76,7 +76,7 @@ if [ "$method" == 'dir' ]; then
 elif [ "$downloadType" == 'srr' ]; then
     fetch_library_files_from_sra_file $library $outputDir $ENA_RETRIES $method $status
 else
-    fetch_library_files_from_ena $library $outputDir $ENA_RETRIES $method $status $sepe
+    fetch_library_files_from_ena $library $outputDir $ENA_RETRIES $method $status $downloadType $sepe
 fi
 
 fetchStatus=$?
