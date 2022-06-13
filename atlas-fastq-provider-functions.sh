@@ -1154,7 +1154,7 @@ fetch_library_files_from_ena() {
     local tempdir=$(get_temp_dir)
     check_variables 'library'
 
-    filenames_arr=()
+    local filenames_arr=()
 
     local listMethod='ftp'
     if [ "$method" == 'ssh' ]; then
@@ -1171,9 +1171,9 @@ fetch_library_files_from_ena() {
         echo -e "$libraryListing" | while read -r l; do
            local fileName=$(basename $l )
            if [ "$sepe" == "PAIRED" ]; then
-              filenames_arr+=(${fileName//_*fastq.gz/});
+              filenames_arr+=(${fileName//_*fastq.gz/})
            else
-              filenames_arr+=(${fileName//.fastq.gz/});
+              filenames_arr+=(${fileName//.fastq.gz/})
            fi
            echo "Downloading file $fileName for $library to ${tempdir}"
             if [ $method == 'auto' ]; then
@@ -1203,10 +1203,10 @@ fetch_library_files_from_ena() {
         # get base filenames to be checked
         echo "paired end"
         echo "${filenames_arr[@]}" 
-        #uniq=($(printf "%s\n" "${filenames_arr[@]}" | sort -u | tr '\n' ' ' ))
-        #echo "${uniq[@]}" 
+        uniq=($(printf "%s\n" "${filenames_arr[@]}" | sort -u | tr '\n' ' ' ))
+        echo "${uniq[@]}" 
         
-        for basefile in "${filenames_arr[@]}"; do
+        for basefile in "${uniq[@]}"; do
             
             localFastqPath=${tempdir}/$basefile 
 
