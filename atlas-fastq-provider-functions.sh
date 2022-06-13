@@ -1256,6 +1256,7 @@ fetch_library_files_from_ena() {
         # get base filenames to be checked
         uniq=($(printf "%s\n" "${filenames_arr[@]}" | sort -u | tr '\n' ' ' ))
         #printf "%s\n" "${uniq[@]}" 
+        echo "${uniq[@]}" 
         
         for basefile in "${uniq[@]}"; do
 
