@@ -1202,10 +1202,11 @@ fetch_library_files_from_ena() {
 
         # get base filenames to be checked
         echo "paired end"
-        uniq=($(printf "%s\n" "${filenames_arr[@]}" | sort -u | tr '\n' ' ' ))
-        echo "${uniq[@]}" 
+        echo "${filenames_arr[@]}" 
+        #uniq=($(printf "%s\n" "${filenames_arr[@]}" | sort -u | tr '\n' ' ' ))
+        #echo "${uniq[@]}" 
         
-        for basefile in "${uniq[@]}"; do
+        for basefile in "${filenames_arr[@]}"; do
             
             localFastqPath=${tempdir}/$basefile 
 
