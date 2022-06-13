@@ -1150,7 +1150,8 @@ fetch_library_files_from_ena() {
     local downloadType=${6:-'fastq'}
     local sepe=${7:-'PAIRED'}
 
-    mkdir -p ${outputDir}.tmp
+    #mkdir -p ${outputDir}.tmp
+    local tempdir=$(get_temp_dir)
     check_variables 'library'
 
     filenames_arr=()
@@ -1170,14 +1171,14 @@ fetch_library_files_from_ena() {
         echo -e "$libraryListing" | while read -r l; do
            local fileName=$(basename $l )
            filenames_arr+=(${fileName//_*fastq.gz/});
-           echo "Downloading file $fileName for $library to ${outputDir}.tmp"
+           echo "Downloading file $fileName for $library to ${tempdir}"
             if [ $method == 'auto' ]; then
                 fetchMethod='fetch_file_from_ena_auto'
             else
                 fetchMethod="fetch_file_from_ena_over_$method"
             fi
 
-            $fetchMethod $l ${outputDir}.tmp/$fileName $retries $library "" "$downloadType" $status
+            $fetchMethod $l ${tempdir}/$fileName $retries $library "" "$downloadType" $status
             local returnCode=$?
             if [ $returnCode -ne 0 ]; then
                 return $returnCode
@@ -1201,7 +1202,7 @@ fetch_library_files_from_ena() {
         
         for basefile in "${uniq[@]}"; do
 
-            localFastqPath=${outputDir}.tmp/$basefile 
+            localFastqPath=${tempdir}/$basefile 
 
             if [ ! -s "${localFastqPath}_1.fastq.gz" ] ||  [ ! -s "${localFastqPath}_2.fastq.gz" ]; then
     
@@ -1254,7 +1255,7 @@ fetch_library_files_from_ena() {
         
         for basefile in "${uniq[@]}"; do
 
-            localFastqPath=${outputDir}.tmp/$basefile 
+            localFastqPath=${tempdir}/$basefile 
 
             if [ ! -s "${localFastqPath}.fastq.gz" ]; then
                 # ENA has a bug: 'For some reason we dump
@@ -1277,8 +1278,8 @@ fetch_library_files_from_ena() {
     fi
 
 
-    cp -a ${outputDir}.tmp/. ${outputDir}/
-    rm -rf ${outputDir}.tmp
+    cp -a ${tempdir}/. ${outputDir}/
+    #rm -rf ${outputDir}.tmp
     echo "Retrieved $sepe-END $library from ENA successfully"
 
 }
