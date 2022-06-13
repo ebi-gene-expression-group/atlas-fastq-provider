@@ -1202,10 +1202,10 @@ fetch_library_files_from_ena() {
 
         # get base filenames to be checked
         uniq=($(printf "%s\n" "${filenames_arr[@]}" | sort -u | tr '\n' ' ' ))
-        #printf "%s\n" "${uniq[@]}" 
+        echo "${uniq[@]}" 
         
         for basefile in "${uniq[@]}"; do
-
+            
             localFastqPath=${tempdir}/$basefile 
 
             if [ ! -s "${localFastqPath}_1.fastq.gz" ] ||  [ ! -s "${localFastqPath}_2.fastq.gz" ]; then
