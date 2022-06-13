@@ -1197,7 +1197,7 @@ fetch_library_files_from_ena() {
 
         # get base filenames to be checked
         uniq=($(printf "%s\n" "${filenames_arr[@]}" | sort -u | tr '\n' ' ' ))
-        printf "%s\n" "${uniq[@]}" 
+        #printf "%s\n" "${uniq[@]}" 
         
         for basefile in "${uniq[@]}"; do
 
@@ -1225,7 +1225,7 @@ fetch_library_files_from_ena() {
                         exit 1
                     else
                         if [ ! -s "${localFastqPath}_1.fastq" ] ||  [ ! -s "${localFastqPath}_2.fastq" ]; then
-                            rm -rf ${localFastqPath}*.fastq.gz
+                            rm -rf ${localFastqPath}*.fastq*
                             echo "ERROR: Failed to de-interleave, forward or reverse not generated"
                             exit 1
                         fi
@@ -1248,25 +1248,33 @@ fetch_library_files_from_ena() {
 
     else
         echo "single end"
-        if [ ! -s "${localFastqPath}.fastq.gz" ]; then
-            # ENA has a bug: 'For some reason we dump
-            # these runs differently as we expect a CONSENSUS to be dumped.  If
-            # there is no CONSENSUS table found inside cSRA container we dump runs
-            # as-is using --split-file option.' This results in single-end FASTQ
-            # files being named <run_id>_1.fastq.gz. They say they will fix it, but
-            # in the meantime, we need to use the following workaround.
+        # get base filenames to be checked
+        uniq=($(printf "%s\n" "${filenames_arr[@]}" | sort -u | tr '\n' ' ' ))
+        #printf "%s\n" "${uniq[@]}" 
         
-            if [ -s ${localFastqPath}_1.fastq.gz ] && [ ! -s ${localFastqPath}_2.fastq.gz ]; then
-                mv ${localFastqPath}_1.fastq.gz ${localFastqPath}.fastq.gz
+        for basefile in "${uniq[@]}"; do
+
+            localFastqPath=${outputDir}.tmp/$basefile 
+
+            if [ ! -s "${localFastqPath}.fastq.gz" ]; then
+                # ENA has a bug: 'For some reason we dump
+                # these runs differently as we expect a CONSENSUS to be dumped.  If
+                # there is no CONSENSUS table found inside cSRA container we dump runs
+                # as-is using --split-file option.' This results in single-end FASTQ
+                # files being named <run_id>_1.fastq.gz. They say they will fix it, but
+                # in the meantime, we need to use the following workaround.
+        
+                if [ -s ${localFastqPath}_1.fastq.gz ] && [ ! -s ${localFastqPath}_2.fastq.gz ]; then
+                    mv ${localFastqPath}_1.fastq.gz ${localFastqPath}.fastq.gz
+                fi
             fi
-        fi
 
-        if [ ! -s "${localFastqPath}.fastq.gz" ]; then
-            echo "ERROR: ${localFastqPath}.fastq.gz not present: failed to retrieve $(basename ${localFastqPath}).fastq.gz"
-            exit 1
-        fi
+            if [ ! -s "${localFastqPath}.fastq.gz" ]; then
+                echo "ERROR: ${localFastqPath}.fastq.gz not present: failed to retrieve $(basename ${localFastqPath}).fastq.gz"
+                exit 1
+            fi
+        done
     fi
-
 
 
     cp -a ${outputDir}.tmp/. ${outputDir}/
