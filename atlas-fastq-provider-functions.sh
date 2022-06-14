@@ -1197,7 +1197,7 @@ fetch_library_files_from_ena() {
                 return $returnCode
             fi
             echo $filenames_arr
-            echo "filenames_array=$filenames_arr"
+            filenames_array=("${filenames_arr[@]}") 
         done 
         set -m
 
