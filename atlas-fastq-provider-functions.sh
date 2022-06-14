@@ -1154,7 +1154,7 @@ fetch_library_files_from_ena() {
     local tempdir=$(get_temp_dir)
     check_variables 'library'
 
-    local filenames_arr=()
+    local declare -a filenames_arr
 
     local listMethod='ftp'
     if [ "$method" == 'ssh' ]; then
@@ -1173,13 +1173,13 @@ fetch_library_files_from_ena() {
             if [ "$sepe" == "PAIRED" ]; then
                 echo $fileName
                 if [[ "$fileName" =~ _[0-9]".fastq.gz" ]]; then  
-                    filenames_arr+=(${fileName//_*fastq.gz/})
+                    filenames_arr+=( "${fileName//_*fastq.gz/}" )
                 else
-                    echo "it could be single end"
-                    filenames_arr+=(${fileName//.fastq.gz/})
+                    echo "WARNING: paired-end provided, but it could actually be single end"
+                    filenames_arr+=( "${fileName//.fastq.gz/}" )
                 fi
            else
-              filenames_arr+=(${fileName//.fastq.gz/})
+              filenames_arr+=( "${fileName//.fastq.gz/}" )
            fi
            echo "Downloading file $fileName for $library to ${tempdir}"
             if [ $method == 'auto' ]; then
