@@ -1164,7 +1164,7 @@ fetch_library_files_from_ena() {
     local libraryListing=
     libraryListing=$(get_library_listing $library $listMethod $status)
     local exitCode=$?
-
+    echo $libraryListing
     if [ $exitCode -ne 0 ]; then
         return 5
     else
