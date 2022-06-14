@@ -1186,7 +1186,7 @@ fetch_library_files_from_ena() {
 
     for liblist in "$libraryListing" ; do
 
-            fname=$(basename $liblist )
+            fname=$(basename "$liblist" )
 
             if [ "$sepe" == "PAIRED" ]; then
     
