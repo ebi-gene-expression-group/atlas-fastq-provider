@@ -1154,7 +1154,7 @@ fetch_library_files_from_ena() {
     local tempdir=$(get_temp_dir)
     check_variables 'library'
 
-    local declare -a filenames_arr
+    local filenames_array=()
 
     local listMethod='ftp'
     if [ "$method" == 'ssh' ]; then
@@ -1168,7 +1168,10 @@ fetch_library_files_from_ena() {
     if [ $exitCode -ne 0 ]; then
         return 5
     else
+        set +m # To disable job control
         echo -e "$libraryListing" | while read -r l; do
+           shopt -s lastpipe
+           local filenames_arr=()
            local fileName=$(basename $l )
             if [ "$sepe" == "PAIRED" ]; then
                 echo $fileName
@@ -1193,7 +1196,10 @@ fetch_library_files_from_ena() {
             if [ $returnCode -ne 0 ]; then
                 return $returnCode
             fi
+            echo $filenames_arr
+            echo "filenames_array=$filenames_arr"
         done 
+        set -m
 
     fi
 
@@ -1208,8 +1214,8 @@ fetch_library_files_from_ena() {
 
         # get base filenames to be checked
         echo "paired end"
-        echo "${filenames_arr[@]}" 
-        uniq=($(printf "%s\n" "${filenames_arr[@]}" | sort -u | tr '\n' ' ' ))
+        echo "${filenames_array[@]}" 
+        uniq=($(printf "%s\n" "${filenames_array[@]}" | sort -u | tr '\n' ' ' ))
         echo "${uniq[@]}" 
         
         for basefile in "${uniq[@]}"; do
@@ -1262,7 +1268,7 @@ fetch_library_files_from_ena() {
     else
         echo "single end"
         # get base filenames to be checked
-        uniq=($(printf "%s\n" "${filenames_arr[@]}" | sort -u | tr '\n' ' ' ))
+        uniq=($(printf "%s\n" "${filenames_array[@]}" | sort -u | tr '\n' ' ' ))
         #printf "%s\n" "${uniq[@]}" 
         echo "${uniq[@]}" 
         
