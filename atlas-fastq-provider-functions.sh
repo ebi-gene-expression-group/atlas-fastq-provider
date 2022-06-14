@@ -1170,8 +1170,14 @@ fetch_library_files_from_ena() {
     else
         echo -e "$libraryListing" | while read -r l; do
            local fileName=$(basename $l )
-           if [ "$sepe" == "PAIRED" ]; then
-              filenames_arr+=(${fileName//_*fastq.gz/})
+            if [ "$sepe" == "PAIRED" ]; then
+                echo $fileName
+                if [[ "$fileName" =~ _[0-9]".fastq.gz" ]]; then  
+                    filenames_arr+=(${fileName//_*fastq.gz/})
+                else
+                    echo "it could be single end"
+                    filenames_arr+=(${fileName//.fastq.gz/})
+                fi
            else
               filenames_arr+=(${fileName//.fastq.gz/})
            fi
