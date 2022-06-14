@@ -1187,7 +1187,7 @@ fetch_library_files_from_ena() {
     for liblist in "$libraryListing" ; do
 
             fname=$(basename $liblist )
-            
+
             if [ "$sepe" == "PAIRED" ]; then
     
                 if [[ "$fname" =~ _[0-9]".fastq.gz" ]]; then  
@@ -1288,8 +1288,8 @@ fetch_library_files_from_ena() {
         done
     fi
 
-    cp -a ${tempdir}/. ${outputDir}/
-    #rm -rf ${outputDir}.tmp
+    cp -a $tempdir/. $outputDir/
+
     echo "Retrieved $sepe-END $library from ENA successfully"
 
 }

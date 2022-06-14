@@ -118,6 +118,6 @@ setup() {
     run rm -rf $fastq_file_ftp_se_1 && run rm -rf $fastq_file_ftp_se_2 && eval "fetchEnaLibraryFastqs.sh -l ${sra_lib} -d ${output_dir} -m ftp -t fastq -n PAIRED"
 
     [ "$status" -eq 0 ]
-    [ ! -f "$fastq_file_ftp_se_1" ]
-    [ ! -f "$fastq_file_ftp_se_2" ]
+    [  -f "$fastq_file_ftp_se_1" ]
+    [  -f "$fastq_file_ftp_se_2" ]
 }
