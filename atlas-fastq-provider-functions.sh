@@ -1150,7 +1150,6 @@ fetch_library_files_from_ena() {
     local downloadType=${6:-'fastq'}
     local sepe=${7:-'PAIRED'}
 
-    #mkdir -p ${outputDir}.tmp
     local tempdir=$(get_temp_dir)
     check_variables 'library'
 
@@ -1184,6 +1183,7 @@ fetch_library_files_from_ena() {
             fi
         done 
     fi
+
     for liblist in "$libraryListing" ; do
             if [ "$sepe" == "PAIRED" ]; then
                 fname=$(basename $liblist )
@@ -1197,10 +1197,11 @@ fetch_library_files_from_ena() {
                 filenames_arr+=( "${fname//.fastq.gz/}" )
             fi
     done
-    # get base filenames to be checked
+    # get unique base filenames to be checked
     echo "${filenames_arr[@]}" 
     uniq=($(printf "%s\n" "${filenames_arr[@]}" | sort -u | tr '\n' ' ' ))
     echo "${uniq[@]}" 
+
     # A sleep here to try to deal with cases where we get a success exit code
     # above, but the file does not exist when checked below. Suspect some sort of
     # file system latency, so maybe if we wait a bit before checking it will solve
@@ -1210,10 +1211,7 @@ fetch_library_files_from_ena() {
 
     if [ "$sepe" == "PAIRED" ]; then
 
-        # get base filenames to be checked
         echo "paired end"
-        #uniq=($(printf "%s\n" "${filenames_array[@]}" | sort -u | tr '\n' ' ' ))
-        #echo "${uniq[@]}" 
         
         for basefile in "${uniq[@]}"; do
             
@@ -1222,9 +1220,7 @@ fetch_library_files_from_ena() {
             if [ ! -s "${localFastqPath}_1.fastq.gz" ] ||  [ ! -s "${localFastqPath}_2.fastq.gz" ]; then
     
                 if [ -s "${localFastqPath}_1.fastq.gz" ]; then
-        
                     # Only the _1 file exists, this is a possible interleaved situation                
-
                     mv ${localFastqPath}_1.fastq.gz ${localFastqPath}.fastq.gz
                 fi
 
@@ -1233,7 +1229,6 @@ fetch_library_files_from_ena() {
                 if [ -s ${localFastqPath}.fastq.gz ]; then
                     echo "Trying to deinterleave a FASTQ file of paired reads into two FASTQ files"
                     gzip -dc ${localFastqPath}.fastq.gz | deinterleave_fastq.sh ${localFastqPath}_1.fastq ${localFastqPath}_2.fastq
-                    # ${IRAP_SOURCE_DIR}/scripts/deinterleave.sh $possibleInterleavedFile ${localFastqPath} 2> /dev/null
             
                     if [ $? -ne 0 ]; then
                         rm -rf ${localFastqPath}*.fastq.gz
@@ -1246,6 +1241,7 @@ fetch_library_files_from_ena() {
                             exit 1
                         fi
                     fi
+                    echo "Deinterleave successful"
                     gzip ${localFastqPath}_*.fastq
                 fi
                 # Whether public or private, downloaded directly or created by
@@ -1264,10 +1260,6 @@ fetch_library_files_from_ena() {
 
     else
         echo "single end"
-        # get base filenames to be checked
-        #uniq=($(printf "%s\n" "${filenames_array[@]}" | sort -u | tr '\n' ' ' ))
-        #printf "%s\n" "${uniq[@]}" 
-        #echo "${uniq[@]}" 
         
         for basefile in "${uniq[@]}"; do
 
@@ -1292,7 +1284,6 @@ fetch_library_files_from_ena() {
             fi
         done
     fi
-
 
     cp -a ${tempdir}/. ${outputDir}/
     #rm -rf ${outputDir}.tmp

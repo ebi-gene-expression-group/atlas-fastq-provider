@@ -19,6 +19,8 @@ setup() {
 
     ena_lib_se="SRR18315788"
     fastq_file_ftp_se="${output_dir}/SRR18315788.fastq.gz"
+    fastq_file_ftp_se_1="${output_dir}/SRR18315788_1.fastq.gz"
+    fastq_file_ftp_se_2="${output_dir}/SRR18315788_2.fastq.gz"
 
     if [ ! -d "$data_dir" ]; then
         mkdir -p $data_dir
@@ -97,7 +99,7 @@ setup() {
 #    [ -f "$sra_file_http" ]
 #}
 
-@test "Download and unpack SRA file as SE, providing just a SE library identifier" {
+@test "Download and unpack SRA file as SE, providing just a SE library identifier (no deinterleave)" {
     if  [ "$resume" = 'true' ] && [ -f "$fastq_file_ftp_se" ]; then
         skip "$fastq_file_ftp_se exists"
     fi
@@ -108,14 +110,14 @@ setup() {
     [ -f "$fastq_file_ftp_se" ]
 }
 
-@test "Download and unpack SRA file as PE, providing just a SE library identifier" {
-    if  [ "$resume" = 'true' ] && [ -f "$fastq_file_ftp_se" ]; then
-        skip "$fastq_file_ftp_se exists"
+@test "Download and unpack SRA file as PE, providing just a SE library identifier (success deinterleave process)" {
+    if  [ "$resume" = 'true' ] && [ -f "$fastq_file_ftp_se_1" ] && [ -f "$fastq_file_ftp_se_2" ]; then
+        skip "$fastq_file_ftp_se_1 and $fastq_file_ftp_se_2 exist"
     fi
 
-    run rm -rf $fastq_file_ftp_se && eval "fetchEnaLibraryFastqs.sh -l ${ena_lib_se} -d ${output_dir} -m ftp -t fastq -n PAIRED"
+    run rm -rf $fastq_file_ftp_se_1 && run rm -rf $fastq_file_ftp_se_2 && eval "fetchEnaLibraryFastqs.sh -l ${sra_lib} -d ${output_dir} -m ftp -t fastq -n PAIRED"
 
-    [ "$status" -eq 1 ]
-    [ ! -f "$fastq_file_ftp_se" ]
+    [ "$status" -eq 0 ]
+    [ ! -f "$fastq_file_ftp_se_1" ]
+    [ ! -f "$fastq_file_ftp_se_2" ]
 }
-
