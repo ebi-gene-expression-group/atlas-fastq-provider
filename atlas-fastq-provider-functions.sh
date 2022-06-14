@@ -1154,7 +1154,7 @@ fetch_library_files_from_ena() {
     local tempdir=$(get_temp_dir)
     check_variables 'library'
 
-    local filenames_array=()
+    local filenames_arr=()
 
     local listMethod='ftp'
     if [ "$method" == 'ssh' ]; then
@@ -1184,7 +1184,7 @@ fetch_library_files_from_ena() {
             fi
         done 
     fi
-    for liblist in $libraryListing; do
+    for liblist in "$libraryListing" ; do
             if [ "$sepe" == "PAIRED" ]; then
                 fname=$(basename $liblist )
                 if [[ "$fname" =~ _[0-9]".fastq.gz" ]]; then  
@@ -1193,13 +1193,13 @@ fetch_library_files_from_ena() {
                     echo "WARNING: paired-end provided, but it could actually be single end"
                     filenames_arr+=( "${fname//.fastq.gz/}" )
                 fi
-           else
-              filenames_arr+=( "${fname//.fastq.gz/}" )
-           fi
+            else
+                filenames_arr+=( "${fname//.fastq.gz/}" )
+            fi
     done
     # get base filenames to be checked
-    echo "${filenames_array[@]}" 
-    uniq=($(printf "%s\n" "${filenames_array[@]}" | sort -u | tr '\n' ' ' ))
+    echo "${filenames_arr[@]}" 
+    uniq=($(printf "%s\n" "${filenames_arr[@]}" | sort -u | tr '\n' ' ' ))
     echo "${uniq[@]}" 
     # A sleep here to try to deal with cases where we get a success exit code
     # above, but the file does not exist when checked below. Suspect some sort of
