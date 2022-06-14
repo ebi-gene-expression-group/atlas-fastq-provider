@@ -1163,20 +1163,20 @@ fetch_library_files_from_ena() {
     local libraryListing=
     libraryListing=$(get_library_listing $library $listMethod $status)
     local exitCode=$?
-    echo $libraryListing
+
     if [ $exitCode -ne 0 ]; then
         return 5
     else
         echo -e "$libraryListing" | while read -r l; do
            local fileName=$(basename $l )
-           echo "Downloading file $fileName for $library to ${tempdir}"
+           echo "Downloading file $fileName for $library to $tempdir"
             if [ $method == 'auto' ]; then
                 fetchMethod='fetch_file_from_ena_auto'
             else
                 fetchMethod="fetch_file_from_ena_over_$method"
             fi
 
-            $fetchMethod $l ${tempdir}/$fileName $retries $library "" "$downloadType" $status
+            $fetchMethod $l $tempdir/$fileName $retries $library "" "$downloadType" $status
             local returnCode=$?
             if [ $returnCode -ne 0 ]; then
                 return $returnCode
@@ -1185,8 +1185,11 @@ fetch_library_files_from_ena() {
     fi
 
     for liblist in "$libraryListing" ; do
+
+            fname=$(basename $liblist )
+            
             if [ "$sepe" == "PAIRED" ]; then
-                fname=$(basename $liblist )
+    
                 if [[ "$fname" =~ _[0-9]".fastq.gz" ]]; then  
                     filenames_arr+=( "${fname//_*fastq.gz/}" )
                 else
