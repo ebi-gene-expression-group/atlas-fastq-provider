@@ -1227,7 +1227,7 @@ fetch_library_files_from_ena() {
                     mv ${localFastqPath}_1.fastq.gz ${localFastqPath}.fastq.gz
                 fi
 
-                # If we have a single file, check if interleaved fastq filesee and deinterleave it
+                # If we have a single file, check if interleaved fastq file, and attempt to deinterleave it
 
                 if [ -s ${localFastqPath}.fastq.gz ]; then
                     set +e
