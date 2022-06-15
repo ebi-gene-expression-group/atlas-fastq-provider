@@ -7,4 +7,3 @@ dependencies:
   - bats
   - coreutils
   - sra-tools
-  - grep
