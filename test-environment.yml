@@ -5,6 +5,7 @@ channels:
   - defaults
 dependencies:
   - bats
+  - grep
   - coreutils
   - sra-tools
-  - bash
+  - fastq_utils

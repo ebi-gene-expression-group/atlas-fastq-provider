@@ -1227,14 +1227,22 @@ fetch_library_files_from_ena() {
                     mv ${localFastqPath}_1.fastq.gz ${localFastqPath}.fastq.gz
                 fi
 
-                # If we have a single file, see if we can deinterleave it
+                # If we have a single file, check if interleaved fastq filesee and deinterleave it
 
                 if [ -s ${localFastqPath}.fastq.gz ]; then
+
+                    fastq_info ${localFastqPath}.fastq.gz pe
+                    if [ $? -ne 0 ]; then
+                        rm -rf ${localFastqPath}.fastq.gz
+                        echo "ERROR: Failed  validation of interleaved fastq file ${localFastqPath}.fastq.gz"
+                        exit 1
+                    fi
+
                     echo "Trying to deinterleave a FASTQ file of paired reads into two FASTQ files"
                     gzip -dc ${localFastqPath}.fastq.gz | deinterleave_fastq.sh ${localFastqPath}_1.fastq ${localFastqPath}_2.fastq
             
                     if [ $? -ne 0 ]; then
-                        rm -rf ${localFastqPath}*.fastq.gz
+                        rm -rf ${localFastqPath}*.fastq*
                         echo "ERROR: Failed to de-interleave ${localFastqPath}.fastq.gz"
                         exit 1
                     else
@@ -1244,7 +1252,18 @@ fetch_library_files_from_ena() {
                             exit 1
                         fi
                     fi
+
+                    # Validate fastq
+                    fastq_info ${localFastqPath}_1.fastq ${localFastqPath}_2.fastq
+                    if [ $? -ne 0 ]; then
+                        rm -rf ${localFastqPath}_*.fastq
+                        rm -rf ${localFastqPath}.fastq.gz
+                        echo "ERROR: Failed fastq validation after de-interleaving ${localFastqPath}_1.fastq and ${localFastqPath}_2.fastq"
+                        exit 1
+                    fi
+
                     echo "Deinterleave successful"
+                    rm -rf ${localFastqPath}.fastq.gz
                     gzip ${localFastqPath}_*.fastq
                 fi
                 # Whether public or private, downloaded directly or created by
