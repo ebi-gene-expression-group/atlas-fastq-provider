@@ -1234,8 +1234,8 @@ fetch_library_files_from_ena() {
                     fastq_info ${localFastqPath}.fastq.gz pe
                     if [ $? -ne 0 ]; then
                         rm -rf ${localFastqPath}.fastq.gz
-                        echo "ERROR: Failed  validation of interleaved fastq file ${localFastqPath}.fastq.gz"
-                        exit 1
+                        echo "ERROR: Failed validation of interleaved PE fastq file ${localFastqPath}.fastq.gz"
+                        return 1
                     fi
 
                     echo "Trying to deinterleave a FASTQ file of paired reads into two FASTQ files"
@@ -1244,12 +1244,12 @@ fetch_library_files_from_ena() {
                     if [ $? -ne 0 ]; then
                         rm -rf ${localFastqPath}*.fastq*
                         echo "ERROR: Failed to de-interleave ${localFastqPath}.fastq.gz"
-                        exit 1
+                        return 1
                     else
                         if [ ! -s "${localFastqPath}_1.fastq" ] ||  [ ! -s "${localFastqPath}_2.fastq" ]; then
                             rm -rf ${localFastqPath}*.fastq*
                             echo "ERROR: Failed to de-interleave, forward or reverse not generated"
-                            exit 1
+                            return 1
                         fi
                     fi
 
@@ -1259,7 +1259,7 @@ fetch_library_files_from_ena() {
                         rm -rf ${localFastqPath}_*.fastq
                         rm -rf ${localFastqPath}.fastq.gz
                         echo "ERROR: Failed fastq validation after de-interleaving ${localFastqPath}_1.fastq and ${localFastqPath}_2.fastq"
-                        exit 1
+                        return 1
                     fi
 
                     echo "Deinterleave successful"
@@ -1272,7 +1272,7 @@ fetch_library_files_from_ena() {
                 for readFile in ${localFastqPath}_1.fastq.gz ${localFastqPath}_2.fastq.gz; do
                     if [ ! -s $readFile ]; then
                         echo "ERROR: Failed to retrieve ${readFile}"
-                        exit 1
+                        return 1
                     fi
                 done
             else
@@ -1302,7 +1302,7 @@ fetch_library_files_from_ena() {
 
             if [ ! -s "${localFastqPath}.fastq.gz" ]; then
                 echo "ERROR: ${localFastqPath}.fastq.gz not present: failed to retrieve $(basename ${localFastqPath}).fastq.gz"
-                exit 1
+                return 1
             fi
         done
     fi
