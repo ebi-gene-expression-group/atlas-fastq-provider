@@ -115,7 +115,7 @@ setup() {
         skip "$fastq_file_ftp_se_1 and $fastq_file_ftp_se_2 exist"
     fi
 
-    run rm -rf $fastq_file_ftp_se_1 && run rm -rf $fastq_file_ftp_se_2 && eval "fetchEnaLibraryFastqs.sh -l ${ena_lib_se} -d ${output_dir} -m ftp -t fastq -n PAIRED"
+    run rm -rf $fastq_file_ftp_se_1 && run rm -rf $fastq_file_ftp_se_2 && run fetchEnaLibraryFastqs.sh -l ${ena_lib_se} -d ${output_dir} -m ftp -t fastq -n PAIRED
 
     [ "$status" -eq 1 ]
     [  ! -f "$fastq_file_ftp_se_1" ]
