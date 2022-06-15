@@ -1230,13 +1230,14 @@ fetch_library_files_from_ena() {
                 # If we have a single file, check if interleaved fastq filesee and deinterleave it
 
                 if [ -s ${localFastqPath}.fastq.gz ]; then
-
+                    set +e
                     fastq_info ${localFastqPath}.fastq.gz pe
                     if [ $? -ne 0 ]; then
                         rm -rf ${localFastqPath}.fastq.gz
                         echo "ERROR: Failed validation of interleaved PE fastq file ${localFastqPath}.fastq.gz"
                         return 1
                     fi
+                    set -e
 
                     echo "Trying to deinterleave a FASTQ file of paired reads into two FASTQ files"
                     gzip -dc ${localFastqPath}.fastq.gz | deinterleave_fastq.sh ${localFastqPath}_1.fastq ${localFastqPath}_2.fastq
@@ -1254,6 +1255,7 @@ fetch_library_files_from_ena() {
                     fi
 
                     # Validate fastq
+                    set +e
                     fastq_info ${localFastqPath}_1.fastq ${localFastqPath}_2.fastq
                     if [ $? -ne 0 ]; then
                         rm -rf ${localFastqPath}_*.fastq
@@ -1261,6 +1263,7 @@ fetch_library_files_from_ena() {
                         echo "ERROR: Failed fastq validation after de-interleaving ${localFastqPath}_1.fastq and ${localFastqPath}_2.fastq"
                         return 1
                     fi
+                    set -e
 
                     echo "Deinterleave successful"
                     rm -rf ${localFastqPath}.fastq.gz
