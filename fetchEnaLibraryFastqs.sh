@@ -1,6 +1,6 @@
 #!/usr/bin/env bash 
 
-usage() { echo "Usage: $0 -l <library> -d <output directory> [-m <retrieval method, default 'wget'>] [-s <source directory for method 'dir'>] [-p <public or private, default public>] [-c <config file to override defaults>] [-t <download type, fastq or srr>]" 1>&2; }
+usage() { echo "Usage: $0 -l <library> -d <output directory> [-m <retrieval method, default 'wget'>] [-s <source directory for method 'dir'>] [-p <public or private, default public>] [-c <config file to override defaults>] [-t <download type, fastq or srr>] [-n <SINGLE or PAIRED, default PAIRED>]" 1>&2; }
 
 # Parse arguments
 
@@ -10,8 +10,9 @@ m=auto
 s=
 p=public
 t=fastq
+n=PAIRED
 
-while getopts ":l:d:m:s:p:c:t:" o; do
+while getopts ":l:d:m:s:p:c:t:n:" o; do
     case "${o}" in
         l)
             l=${OPTARG}
@@ -33,6 +34,9 @@ while getopts ":l:d:m:s:p:c:t:" o; do
             ;;
         t)
             t=${OPTARG}
+            ;;
+        n)
+            n=${OPTARG}
             ;;
         *)
             usage
@@ -61,6 +65,7 @@ fileSource=$s
 status=$p
 configFile=$c
 downloadType=$t
+sepe=$n
 
 if [ ! -z "$configFile" ]; then
     source $configFile
@@ -71,7 +76,7 @@ if [ "$method" == 'dir' ]; then
 elif [ "$downloadType" == 'srr' ]; then
     fetch_library_files_from_sra_file $library $outputDir $ENA_RETRIES $method $status
 else
-    fetch_library_files_from_ena $library $outputDir $ENA_RETRIES $method $status
+    fetch_library_files_from_ena $library $outputDir $ENA_RETRIES $method $status $downloadType $sepe
 fi
 
 fetchStatus=$?
