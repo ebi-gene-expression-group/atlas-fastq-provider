@@ -1054,7 +1054,7 @@ convert_ena_fastq_to_uri() {
             fastq=''
         fi
 
-        local libDir=$(dirname $(get_library_path $library))
+        local libDir=$(dirname $(get_library_path $library) | sed s+^/++)
         if [ "$uriType" == 'http' ]; then
             echo ${ENA_HTTP_ROOT_PATH}/$downloadType/$libDir$fastq
         else
