@@ -16,10 +16,10 @@ Installation will create a file 'atlas-fastq-provider-config.sh' in the same ins
 
 ```
 ENA_SSH_HOST='sra-login-1'
-ENA_SSH_ROOT_DIR='/nfs/era-pub/vol1/fastq/'
+ENA_SSH_ROOT_DIR='/nfs/era-pub/vol1/'
 ENA_PRIVATE_SSH_ROOT_DIR='/private/path'
-ENA_FTP_ROOT_PATH='ftp://ftp.sra.ebi.ac.uk/vol1/fastq'
-ENA_HTTP_ROOT_PATH='https://hh.fire.sdo.ebi.ac.uk/fire/public/era/fastq'
+ENA_FTP_ROOT_PATH='ftp://ftp.sra.ebi.ac.uk/vol1'
+ENA_HTTP_ROOT_PATH='https://hx.fire.sdo.ebi.ac.uk/fire/public/era'
 FASTQ_PROVIDER_TEMPDIR='/tmp/atlas-fastq-provider'
 ENA_TEST_FILE='ERR1888172_1.fastq.gz'
 FETCH_FREQ_MILLIS=500
