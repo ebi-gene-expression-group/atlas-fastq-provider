@@ -1,6 +1,6 @@
 # Atlas FASTQ provider 
-[![Anaconda-Version Badge](https://anaconda.org/bioconda/atlas-fastq-provider/badges/version.svg)](https://anaconda.org/bioconda/atlas-fastq-provider/badges/version.svg)
-[![Anaconda-Release Badge](https://anaconda.org/bioconda/atlas-fastq-provider/badges/latest_release_date.svg)](https://anaconda.org/bioconda/atlas-fastq-provider/badges/latest_release_date.svg)
+[![Anaconda-Version Badge](https://anaconda.org/bioconda/atlas-fastq-provider/badges/version.svg)](https://anaconda.org/bioconda/atlas-fastq-provider)
+[![Anaconda-Release Badge](https://anaconda.org/bioconda/atlas-fastq-provider/badges/latest_release_date.svg)](https://anaconda.org/bioconda/atlas-fastq-provider)
 
 
 Scripts and utilities for providing fastqs to workflows.
