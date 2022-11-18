@@ -1309,7 +1309,8 @@ fetch_library_files_from_ena() {
             fi
         done
     fi
-
+    
+    mkdir -p $outputDir
     cp -a $tempdir/. $outputDir/
 
     echo "Retrieved $sepe-END $library from ENA successfully"
