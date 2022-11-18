@@ -7,5 +7,5 @@ dependencies:
   - bats
   - grep
   - coreutils
-  - sra-tools
+  - sra-tools=2.11.0
   - fastq_utils
