@@ -1311,7 +1311,15 @@ fetch_library_files_from_ena() {
     fi
     
     mkdir -p $outputDir
-    cp -a $tempdir/. $outputDir/
+    
+    echo "Files to be copied"
+    echo "${filenames_arr[@]}"
+    
+    for basefile in "${filenames_arr[@]}"; do
+        echo "File ${basefile} being copied from ${tempdir} to ${outputDir}"
+        cp -a $tempdir/$basefile $outputDir/
+    done;
+    
 
     echo "Retrieved $sepe-END $library from ENA successfully"
 
