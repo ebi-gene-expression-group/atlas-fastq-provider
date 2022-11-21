@@ -1311,7 +1311,15 @@ fetch_library_files_from_ena() {
     fi
     
     mkdir -p $outputDir
-    cp -a $tempdir/. $outputDir/
+    
+    echo "Libraries to be copied"
+    echo "${uniq[@]}"
+    
+    for basefile in "${uniq[@]}"; do
+        echo "File ${basefile} being copied from ${tempdir} to ${outputDir}"
+        cp -a $tempdir/$basefile*fastq.gz $outputDir/
+    done
+    
 
     echo "Retrieved $sepe-END $library from ENA successfully"
 
