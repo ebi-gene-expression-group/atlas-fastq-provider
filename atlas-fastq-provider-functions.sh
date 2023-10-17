@@ -85,6 +85,18 @@ check_ena_ssh() {
     fi
 }
 
+# 
+
+check_ena_s3() {
+    ##########
+    if [ -z "$ENA_S3_PROFILE" ]; then
+        echo "ERROR: To query or download files from the ENA server using AWS S3, you need to set the environment variable ENA_S3_USER. This is a user for which an S3 profile exists, and whih can retrieve files from $ENA_S3_ROOT_PATH."
+        return 1
+    else
+        echo "Test S3 function here"
+    fi
+}
+
 # Get a string to sudo as necessary
 
 fetch_ena_sudo_string() {
@@ -664,7 +676,7 @@ probe_ena_methods() {
 
     local probe_file=${1:-''}
     local tempdir=$(get_temp_dir)
-    local allowedDownloadMethods=${ALLOWED_DOWNLOAD_METHODS:-'ftp http ssh'}
+    local allowedDownloadMethods=${ALLOWED_DOWNLOAD_METHODS:-'ftp http ssh s3'}
     local testFile=   
  
     if [ -z "$probe_file" ]; then
@@ -880,6 +892,103 @@ fetch_file_from_ena_over_ssh() {
     check_variables "enaFile" "destFile"
 
     check_ena_ssh
+
+    if [ $? -eq 1 ]; then
+        return 6
+    fi 
+    
+    check_ena_method 'ssh'
+    if [ $? -ne 0 ]; then
+        return 3
+    fi
+
+    # Check we can sudo to the necessary user
+    local sudoString=
+    sudoString=$(fetch_ena_sudo_string)
+    if [ $? -ne 0 ]; then 
+        return 4 
+    fi
+
+    # Convert to an ENA path
+    enaPath=$(convert_ena_fastq_to_ssh_path $enaFile $status $library)
+
+    # Check file is present at specified location    
+    validate_ena_ssh_path $enaPath    
+    if [ $? -ne 0 ]; then 
+        return 5 
+    elif [ -n "$validateOnly" ]; then
+        return 0
+    fi
+    
+    # Check destination file not already present
+
+    if [ -e "$destFile" ]; then
+        return 2
+    fi
+    
+    # Make destination group-writable if we need to sudo
+    
+    local sshTempFile=${destFile}.tmp
+
+    if [ "$sudoString" != '' ]; then
+        local sshTempDir=$tempdir/ssh
+        mkdir -p $sshTempDir
+        chmod a+rwx $sshTempDir
+        sshTempFile=$sshTempDir/$(basename ${destFile}).tmp
+    fi
+    
+    rm -f $sshTempFile
+
+    echo "Downloading remote file $enaPath to $destFile over SSH"
+    
+    # Run the rsync over SSH, sudo'ing if necessary use wait_and_record() to
+    # avoid overloading the server
+
+    mkdir -p $(dirname $destFile)
+    local process_status=1
+    for i in $(seq 1 $retries); do 
+        
+        wait_and_record 'ena_ssh'
+    
+        $sudoString rsync -ssh --inplace -avc ${ENA_SSH_HOST}:$enaPath $sshTempFile > /dev/null
+        if [ $? -eq 0 ]; then
+            process_status=0
+            break
+        fi
+    done    
+
+    if [ $process_status -ne 0 ] || [ ! -s ${sshTempFile} ] ; then
+        echo "ERROR: Failed to retrieve $enaPath to ${destFile}" 1>&2
+        return 1
+    fi
+
+    # Move or copy files to final locations
+
+    if [ "$sudoString" != '' ]; then
+        $sudoString chmod a+r ${sshTempFile}
+        cp ${sshTempFile} ${destFile}
+        $sudoString rm -f ${sshTempFile}
+    else
+        mv ${sshTempFile} ${destFile}
+    fi
+    
+    return 0
+}
+
+fetch_file_from_ena_over_s3() {
+    ##########
+    local enaFile=$1
+    local destFile=$2
+    local retries=${3:-3}
+    local library=${4:-''}
+    local validateOnly=${5:-''}
+    local downloadType=${6:-'fastq'}
+    local status=${7:-'public'}
+    local tempdir=$(get_temp_dir)
+
+    check_variables "enaFile" "destFile"
+
+    check_ena_s3
 
     if [ $? -eq 1 ]; then
         return 6

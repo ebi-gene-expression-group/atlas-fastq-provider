@@ -95,11 +95,11 @@ if [[  "$guessedSource" == 'hca' || ( "$fileSource" == 'auto' && "$status" != 'p
     fileSource=$guessedSource
 fi
 
-# Guess the method when set to 'auto', set to SSH for private
+# Guess the method when set to 'auto', set to AWS S3 for private
 
 if [ "$status" == 'private' ]; then 
 
-    method='ena_ssh'
+    method='ena_s3'
     fileSource='ena'
 
 elif [ "$fileSource" == 'hca' ]; then
@@ -160,12 +160,18 @@ elif [ "$method" == 'wget' ]; then
 
 elif [ "$method" == 'dir' ]; then
     link_local_file $fileSource $file_or_uri $target
-    fetch_status=$?    
+    fetch_status=$?
 
 elif [ "$method" == 'ena_ssh' ]; then
     # Use an SSH connection to retrieve the file
     fetch_file_from_ena_over_ssh $file_or_uri $target "$ENA_RETRIES" "$library" "$validateOnly" "$downloadType" $status
-    fetch_status=$?    
+    fetch_status=$?
+
+elif [ "$method" == 'ena_s3' ]; then
+    # Use AWS S3 to retrieve the file
+    ##########
+    fetch_file_from_ena_over_s3 $file_or_uri $target "$ENA_RETRIES" "$library" "$validateOnly" "$downloadType" $status
+    fetch_status=$?
 
 elif [ "$method" == 'ena_http' ]; then
     
