@@ -87,7 +87,7 @@ check_ena_ssh() {
 
 # 
 
-check_ena_s3() {
+check_ena_s3_profile() {
     if [ -z "$ENA_S3_PROFILE" ]; then
         echo "ERROR: To query or download files from the ENA server using AWS S3, you need to set the environment variable ENA_S3_PROFILE. This is an S3 profile with credentials for the retrieval of files from $ENA_S3_URL."
         return 1
@@ -157,7 +157,7 @@ validate_ena_ssh_path() {
 validate_ena_fire_path() {
     local enaFile=$1
     
-    check_ena_s3
+    check_ena_s3_profile
 
     if [ $? -eq 1 ]; then
         return 1
@@ -1009,7 +1009,7 @@ fetch_file_from_ena_over_s3() {
 
     check_variables "enaFile" "destFile"
 
-    check_ena_s3
+    check_ena_s3_profile
 
     if [ $? -eq 1 ]; then
         return 10
