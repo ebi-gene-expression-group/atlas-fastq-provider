@@ -1068,7 +1068,7 @@ fetch_file_from_ena_over_s3() {
         
         wait_and_record 'ena_s3'
     
-        aws --profile fg_atlas --endpoint-url $ENA_S3_URL s3 cp $enaPath $s3TempFile > /dev/null
+        aws --profile $ENA_S3_PROFILE --endpoint-url $ENA_S3_URL s3 cp $enaPath $s3TempFile > /dev/null
 
         if [ $? -eq 0 ]; then
             process_status=0
