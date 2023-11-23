@@ -88,12 +88,11 @@ check_ena_ssh() {
 # 
 
 check_ena_s3() {
-    ##########
     if [ -z "$ENA_S3_PROFILE" ]; then
-        echo "ERROR: To query or download files from the ENA server using AWS S3, you need to set the environment variable ENA_S3_USER. This is a user for which an S3 profile exists, and whih can retrieve files from $ENA_S3_ROOT_PATH."
+        echo "ERROR: To query or download files from the ENA server using AWS S3, you need to set the environment variable ENA_S3_PROFILE. This is an S3 profile with credentials for the retrieval of files from $ENA_S3_URL."
         return 1
     else
-        echo "Test S3 function here"
+        return 0
     fi
 }
 
@@ -146,6 +145,29 @@ validate_ena_ssh_path() {
         return 0
     else
         echo "ERROR: ${enaFile} not present on ${ENA_SSH_HOST}" 1>&2
+        return 1
+    fi
+}
+
+
+# Use AWS S3 to check if the file is in ENA. Note that the '-n' is important,
+# because any 'while read' loops calling this script use STDIN, which SSH will
+# consume otherwise.
+
+validate_ena_fire_path() {
+    local enaFile=$1
+    
+    check_ena_s3
+
+    if [ $? -eq 1 ]; then
+        return 1
+    fi 
+
+    aws --profile $ENA_S3_PROFILE --endpoint-url $ENA_S3_URL s3 ls $enaFile > /dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        return 0
+    else
+        echo "ERROR: ${enaFile} not present on ${ENA_S3_URL}" 1>&2
         return 1
     fi
 }
@@ -991,10 +1013,10 @@ fetch_file_from_ena_over_s3() {
     check_ena_s3
 
     if [ $? -eq 1 ]; then
-        return 6
+        return 10
     fi 
     
-    check_ena_method 'ssh'
+    check_ena_method 's3'
     if [ $? -ne 0 ]; then
         return 3
     fi
@@ -1007,10 +1029,10 @@ fetch_file_from_ena_over_s3() {
     fi
 
     # Convert to an ENA path
-    enaPath=$(convert_ena_fastq_to_ssh_path $enaFile $status $library)
+    enaPath=$(convert_ena_fastq_to_fire_path $enaFile $status $library)
 
-    # Check file is present at specified location    
-    validate_ena_ssh_path $enaPath    
+    # Check file is present at specified location
+    validate_ena_fire_path $enaPath
     if [ $? -ne 0 ]; then 
         return 5 
     elif [ -n "$validateOnly" ]; then
@@ -1025,18 +1047,18 @@ fetch_file_from_ena_over_s3() {
     
     # Make destination group-writable if we need to sudo
     
-    local sshTempFile=${destFile}.tmp
+    local s3TempFile=${destFile}.tmp
 
     if [ "$sudoString" != '' ]; then
-        local sshTempDir=$tempdir/ssh
-        mkdir -p $sshTempDir
-        chmod a+rwx $sshTempDir
-        sshTempFile=$sshTempDir/$(basename ${destFile}).tmp
+        local s3TempDir=$tempdir/s3
+        mkdir -p $s3TempDir
+        chmod a+rwx $s3TempDir
+        s3TempFile=$s3TempDir/$(basename ${destFile}).tmp
     fi
     
-    rm -f $sshTempFile
+    rm -f $s3TempFile
 
-    echo "Downloading remote file $enaPath to $destFile over SSH"
+    echo "Downloading FIRE file $enaPath to $destFile using AWS S3"
     
     # Run the rsync over SSH, sudo'ing if necessary use wait_and_record() to
     # avoid overloading the server
@@ -1045,16 +1067,17 @@ fetch_file_from_ena_over_s3() {
     local process_status=1
     for i in $(seq 1 $retries); do 
         
-        wait_and_record 'ena_ssh'
+        wait_and_record 'ena_s3'
     
-        $sudoString rsync -ssh --inplace -avc ${ENA_SSH_HOST}:$enaPath $sshTempFile > /dev/null
+        aws --profile fg_atlas --endpoint-url $ENA_S3_URL s3 cp $enaPath $s3TempFile > /dev/null
+
         if [ $? -eq 0 ]; then
             process_status=0
             break
         fi
-    done    
+    done
 
-    if [ $process_status -ne 0 ] || [ ! -s ${sshTempFile} ] ; then
+    if [ $process_status -ne 0 ] || [ ! -s ${s3TempFile} ] ; then
         echo "ERROR: Failed to retrieve $enaPath to ${destFile}" 1>&2
         return 1
     fi
@@ -1062,11 +1085,11 @@ fetch_file_from_ena_over_s3() {
     # Move or copy files to final locations
 
     if [ "$sudoString" != '' ]; then
-        $sudoString chmod a+r ${sshTempFile}
-        cp ${sshTempFile} ${destFile}
-        $sudoString rm -f ${sshTempFile}
+        $sudoString chmod a+r ${s3TempFile}
+        cp ${s3TempFile} ${destFile}
+        $sudoString rm -f ${s3TempFile}
     else
-        mv ${sshTempFile} ${destFile}
+        mv ${s3TempFile} ${destFile}
     fi
     
     return 0
@@ -1133,6 +1156,37 @@ convert_ena_fastq_to_ssh_path(){
             libDir=$(dirname $(get_library_path $library $ENA_PRIVATE_SSH_ROOT_DIR 'short'))
         else
             libDir=$(dirname $(get_library_path $library $ENA_SSH_ROOT_DIR/fastq))
+        fi
+
+        echo $libDir/$fastq
+    fi
+}
+
+convert_ena_fastq_to_fire_path(){
+    local fastq=$1
+    local status=${2:-'public'}
+    local library=${3:-''}
+    local returnCode=0
+
+    local fastq=$(basename $fastq)
+    if [ "$status" == 'private' ]; then
+        if [ "$library" == '' ]; then
+            echo "ERROR: For private FASTQ files, the library cannot be inferred from the file name and must be specified" 1>&2
+            returnCode=1
+        fi 
+    else
+        library=$(get_library_id_from_uri $fastq)
+        returnCode=$?
+    fi
+
+    if [ $returnCode -ne 0 ]; then
+        return $returnCode
+    else
+        local libDir=
+        if [ "$status" == 'private' ]; then
+            libDir=$(dirname $(get_library_path $library $ENA_PRIVATE_S3_ROOT_PATH 'short'))
+        else
+            libDir=$(dirname $(get_library_path $library $ENA_S3_ROOT_PATH/fastq))
         fi
 
         echo $libDir/$fastq

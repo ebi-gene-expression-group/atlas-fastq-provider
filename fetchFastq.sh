@@ -124,7 +124,7 @@ elif [ "$method" != 'wget' ]; then
     
     if [ "$fileSource" == 'ena' ]; then
 
-        if [ "$method" == 'ssh' ] || [ "$method" == 'ftp' ] || [ "$method" == 'http' ];then
+        if [ "$method" == 's3' ] || [ "$method" == 'ssh' ] || [ "$method" == 'ftp' ] || [ "$method" == 'http' ];then
             method="ena_$method"
         else
             echo "$method not valid for ENA" 1>&2
@@ -227,6 +227,8 @@ else
         echo "Probable malformed HCA command" 1>&2
     elif [ $fetch_status -eq 9 ]; then
         echo "SRA file retrieval issue" 1>&2
+    elif [ $fetch_status -eq 10 ]; then
+        echo "ENA_S3_PROFILE needed, can't use AWS S3"
     else
         echo "download failed"  1>&2
     fi
