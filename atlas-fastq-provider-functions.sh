@@ -998,7 +998,6 @@ fetch_file_from_ena_over_ssh() {
 }
 
 fetch_file_from_ena_over_s3() {
-    ##########
     local enaFile=$1
     local destFile=$2
     local retries=${3:-3}

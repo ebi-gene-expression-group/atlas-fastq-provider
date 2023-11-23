@@ -169,7 +169,6 @@ elif [ "$method" == 'ena_ssh' ]; then
 
 elif [ "$method" == 'ena_s3' ]; then
     # Use AWS S3 to retrieve the file
-    ##########
     fetch_file_from_ena_over_s3 $file_or_uri $target "$ENA_RETRIES" "$library" "$validateOnly" "$downloadType" $status
     fetch_status=$?
 
