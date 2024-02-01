@@ -156,18 +156,24 @@ validate_ena_ssh_path() {
 
 validate_ena_fire_path() {
     local enaFile=$1
+    local status=${2:-'public'}
     
-    check_ena_s3_profile
+    local sign_request="--no-sign-request"
 
-    if [ $? -eq 1 ]; then
-        return 1
-    fi 
+    if [ $status != 'public' ]; then
+        check_ena_s3_profile
+        if [ $? -eq 1 ]; then
+            return 1
+        fi
+        sign_request="--profile ${ENA_S3_PROFILE}"
+    fi
 
-    aws --profile $ENA_S3_PROFILE --endpoint-url $ENA_S3_URL s3 ls $enaFile > /dev/null 2>&1
+    aws $sign_request --endpoint-url $ENA_S3_URL s3 ls $enaFile > /dev/null 2>&1
+     
     if [ $? -eq 0 ]; then
         return 0
     else
-        echo "ERROR: ${enaFile} not present on ${ENA_S3_URL}" 1>&2
+        echo "ERROR: ${status} file ${enaFile} not present on ${ENA_S3_URL}" 1>&2
         return 1
     fi
 }
@@ -1009,29 +1015,39 @@ fetch_file_from_ena_over_s3() {
 
     check_variables "enaFile" "destFile"
 
-    check_ena_s3_profile
+    # Run status-specific check
 
-    if [ $? -eq 1 ]; then
-        return 10
-    fi 
-    
+    local sign_request="--no-sign-request"
+
+    if [ $status != 'public' ]; then
+        sign_request="--profile ${ENA_S3_PROFILE}"
+        check_ena_s3_profile
+        if [ $? -eq 1 ]; then
+            return 10
+        fi 
+    fi
+
+    # Check if chosen method is working
+
     check_ena_method 's3'
     if [ $? -ne 0 ]; then
         return 3
     fi
 
-    # Check we can sudo to the necessary user
-    local sudoString=
-    sudoString=$(fetch_ena_sudo_string)
-    if [ $? -ne 0 ]; then 
-        return 4 
-    fi
+    # # Check we can sudo to the necessary user
+    # local sudoString=
+    # sudoString=$(fetch_ena_sudo_string)
+    # if [ $? -ne 0 ]; then 
+    #     return 4 
+    # fi
 
-    # Convert to an ENA path
+    # Convert file into an ENA path
+    
     enaPath=$(convert_ena_fastq_to_fire_path $enaFile $status $library)
 
-    # Check file is present at specified location
-    validate_ena_fire_path $enaPath
+    # Check file is present at specified location given permissions
+
+    validate_ena_fire_path $enaPath $status
     if [ $? -ne 0 ]; then 
         return 5 
     elif [ -n "$validateOnly" ]; then
@@ -1044,16 +1060,16 @@ fetch_file_from_ena_over_s3() {
         return 2
     fi
     
-    # Make destination group-writable if we need to sudo
+    # Make destination group-writable if we need to sudo ################ MODIFY THIS COMMENT
     
     local s3TempFile=${destFile}.tmp
 
-    if [ "$sudoString" != '' ]; then
-        local s3TempDir=$tempdir/s3
-        mkdir -p $s3TempDir
-        chmod a+rwx $s3TempDir
-        s3TempFile=$s3TempDir/$(basename ${destFile}).tmp
-    fi
+    # if [ "$sudoString" != '' ]; then
+    #     local s3TempDir=$tempdir/s3
+    #     mkdir -p $s3TempDir
+    #     chmod a+rwx $s3TempDir
+    #     s3TempFile=$s3TempDir/$(basename ${destFile}).tmp
+    # fi
     
     rm -f $s3TempFile
 
@@ -1063,12 +1079,13 @@ fetch_file_from_ena_over_s3() {
     # avoid overloading the server
 
     mkdir -p $(dirname $destFile)
+
     local process_status=1
     for i in $(seq 1 $retries); do 
         
         wait_and_record 'ena_s3'
     
-        aws --profile $ENA_S3_PROFILE --endpoint-url $ENA_S3_URL s3 cp $enaPath $s3TempFile > /dev/null
+        aws $sign_request --endpoint-url $ENA_S3_URL s3 cp $enaPath $s3TempFile > /dev/null
 
         if [ $? -eq 0 ]; then
             process_status=0
@@ -1083,13 +1100,15 @@ fetch_file_from_ena_over_s3() {
 
     # Move or copy files to final locations
 
-    if [ "$sudoString" != '' ]; then
-        $sudoString chmod a+r ${s3TempFile}
-        cp ${s3TempFile} ${destFile}
-        $sudoString rm -f ${s3TempFile}
-    else
-        mv ${s3TempFile} ${destFile}
-    fi
+    # if [ "$sudoString" != '' ]; then
+    #     $sudoString chmod a+r ${s3TempFile}
+    #     cp ${s3TempFile} ${destFile}
+    #     $sudoString rm -f ${s3TempFile}
+    # else
+    #     mv ${s3TempFile} ${destFile}
+    # fi
+
+    mv ${s3TempFile} ${destFile}
     
     return 0
 }
@@ -1185,7 +1204,7 @@ convert_ena_fastq_to_fire_path(){
         if [ "$status" == 'private' ]; then
             libDir=$(dirname $(get_library_path $library $ENA_PRIVATE_S3_ROOT_PATH 'short'))
         else
-            libDir=$(dirname $(get_library_path $library $ENA_S3_ROOT_PATH/fastq))
+            libDir=$(dirname $(get_library_path $library $ENA_S3_ROOT_PATH))
         fi
 
         echo $libDir/$fastq
