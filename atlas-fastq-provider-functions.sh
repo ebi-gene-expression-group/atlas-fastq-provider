@@ -1186,14 +1186,14 @@ convert_ena_fastq_to_fire_path(){
     local library=${3:-''}
     local returnCode=0
 
-    local fastq=$(basename $fastq)
+    local fastqBase=$(basename $fastq)
     if [ "$status" == 'private' ]; then
         if [ "$library" == '' ]; then
             echo "ERROR: For private FASTQ files, the library cannot be inferred from the file name and must be specified" 1>&2
             returnCode=1
         fi 
     else
-        library=$(get_library_id_from_uri $fastq)
+        library=$(get_library_id_from_uri $fastqBase)
         returnCode=$?
     fi
 
@@ -1207,7 +1207,7 @@ convert_ena_fastq_to_fire_path(){
             libDir=$(dirname $(get_library_path $library $ENA_S3_ROOT_PATH))
         fi
 
-        echo $libDir/$fastq
+        echo $libDir/$fastqBase
     fi
 }
 
