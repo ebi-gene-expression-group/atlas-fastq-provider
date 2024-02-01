@@ -534,7 +534,7 @@ function fetch_library_files_from_sra_file() {
     local library
     library=$(get_library_id_from_uri $sraFile)
 
-    local sourceFile=$(dirname $(get_library_path $library $ENA_FTP_ROOT_PATH/srr))
+    local sourceFile=$(dirname "$(get_library_path "${library}" "${ENA_FTP_ROOT_PATH}/srr")")
     outputDir=$(realpath $outputDir)
 
     # If user has specifified wget, reset to FTP for ENA
@@ -1171,9 +1171,9 @@ convert_ena_fastq_to_ssh_path(){
     else
         local libDir=
         if [ "$status" == 'private' ]; then
-            libDir=$(dirname $(get_library_path $library $ENA_PRIVATE_SSH_ROOT_DIR 'short'))
+            libDir=$(dirname "$(get_library_path "${library}" "${ENA_PRIVATE_SSH_ROOT_DIR}" 'short')")
         else
-            libDir=$(dirname $(get_library_path $library $ENA_SSH_ROOT_DIR/fastq))
+            libDir=$(dirname "$(get_library_path "${library}" "${ENA_SSH_ROOT_DIR}/fastq")")
         fi
 
         echo $libDir/$fastq
@@ -1202,9 +1202,9 @@ convert_ena_fastq_to_fire_path(){
     else
         local libDir=
         if [ "$status" == 'private' ]; then
-            libDir=$(dirname $(get_library_path $library $ENA_PRIVATE_S3_ROOT_PATH 'short'))
+            libDir=$(dirname "$(get_library_path "${library}" "${ENA_PRIVATE_S3_ROOT_PATH}" 'short')")
         else
-            libDir=$(dirname $(get_library_path $library $ENA_S3_ROOT_PATH))
+            libDir=$(dirname "$(get_library_path "${library}" "${ENA_S3_ROOT_PATH}")")
         fi
 
         echo $libDir/$fastqBase
@@ -1235,7 +1235,7 @@ convert_ena_fastq_to_uri() {
             fastq=''
         fi
 
-        local libDir=$(dirname $(get_library_path $library) | sed s+^/++)
+        local libDir=$(dirname "$(get_library_path "${library}")" | sed s+^/++)
         if [ "$uriType" == 'http' ]; then
             echo ${ENA_HTTP_ROOT_PATH}/$downloadType/$libDir$fastq
         else
@@ -1277,12 +1277,12 @@ get_library_listing() {
     local libDir=
     if [ "$method" == 'ssh' ]; then
         if [ "$status" == 'private' ]; then
-            libDir=$(dirname $(get_library_path $library $ENA_PRIVATE_SSH_ROOT_DIR 'short'))
+            libDir=$(dirname "$(get_library_path "${library}" "${ENA_PRIVATE_SSH_ROOT_DIR}" 'short')")
         else
-            libDir=$(dirname $(get_library_path $library $ENA_SSH_ROOT_DIR/fastq))
+            libDir=$(dirname "$(get_library_path "${library}" "${ENA_SSH_ROOT_DIR}/fastq")")
         fi
     else
-        libDir=$(dirname $(get_library_path $library $ENA_FTP_ROOT_PATH/fastq))
+        libDir=$(dirname "$(get_library_path "${library}" "${ENA_FTP_ROOT_PATH}/fastq")")
     fi
     
     if [ "$method" == 'ssh' ]; then
