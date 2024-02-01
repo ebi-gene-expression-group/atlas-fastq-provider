@@ -1204,7 +1204,7 @@ convert_ena_fastq_to_fire_path(){
         if [ "$status" == 'private' ]; then
             libDir=$(dirname "$(get_library_path "${library}" "${ENA_PRIVATE_S3_ROOT_PATH}" 'short')")
         else
-            libDir=$(dirname "$(get_library_path "${library}" "${ENA_S3_ROOT_PATH}")")
+            libDir=$(dirname "$(get_library_path "${library}" "${ENA_S3_ROOT_PATH}/fastq")")
         fi
 
         echo $libDir/$fastqBase
