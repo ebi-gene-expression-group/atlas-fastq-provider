@@ -20,14 +20,22 @@ Installation will create a file 'atlas-fastq-provider-config.sh' in the same ins
 ```
 ENA_SSH_HOST='sra-login-1'
 ENA_SSH_ROOT_DIR='/nfs/era-pub/vol1/'
-ENA_PRIVATE_SSH_ROOT_DIR='/private/path'
+ENA_PRIVATE_SSH_ROOT_DIR=
+ENA_S3_PROFILE=
+ENA_S3_URL='http://hl.fire.sdo.ebi.ac.uk'
+ENA_S3_ROOT_PATH='s3://era-public'
+ENA_PRIVATE_S3_ROOT_PATH=
 ENA_FTP_ROOT_PATH='ftp://ftp.sra.ebi.ac.uk/vol1'
-ENA_HTTP_ROOT_PATH='https://hx.fire.sdo.ebi.ac.uk/fire/public/era'
-FASTQ_PROVIDER_TEMPDIR='/tmp/atlas-fastq-provider'
+ENA_HTTP_ROOT_PATH='https://hl.fire.sdo.ebi.ac.uk/era-public'
+FASTQ_PROVIDER_TEMPDIR='tmp/atlas-fastq-provider'
 ENA_TEST_FILE='ERR1888172_1.fastq.gz'
 FETCH_FREQ_MILLIS=500
 PROBE_UPDATE_FREQ_MINS=15
 ENA_RETRIES=3
+ALLOWED_DOWNLOAD_METHODS='http ftp ssh s3'
+ENA_SSH_USER=
+DCP_BUNDLE_URI=https://service.azul.data.humancellatlas.org/index/bundles/BUNDLE
+DCP_BUNDLE_CATALOGS='dcp1 dcp7'
 ```
 
 Overrides to these variables can also be supplied at runtime (see below).
@@ -66,7 +74,7 @@ Sometimes it's useful to check that a file exists at source, without actually do
 fetchFastq.sh -f ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR188/006/ERR1888646/ERR1888646_1.fastq.gz -t ERR1888646_1.fastq.gz
 ```
 
-### Download from ENA using new HTTP endpoint
+### Download from ENA using HTTP endpoint
 
 ```
 fetchFastq.sh -f ERR1888646_1.fastq.gz -t ERR1888646_1.fastq.gz -m http
@@ -82,9 +90,29 @@ fetchFastq.sh -f ERR1888646_1.fastq.gz -t ERR1888646_1.fastq.gz -m ssh
 
 This will attempt to pull files directly from the ENA server, using the host and path in the [config file](atlas-fastq-provider-config.sh). To do this you must set environment variable 'ENA_SSH_USER'. This should be a user you either are, or can sudo to, with permissions to SSH to the SRA host. This is only likely to be possible if you're privileged member of staff at the EBI.
 
-#### Private files
+### Download from ENA using AWS S3
+
+```
+fetchFastq.sh -f ERR1888646_1.fastq.gz -t ERR1888646_1.fastq.gz -m s3
+```
+
+This will attempt to pull files from ENA via AWS S3, using the ENA_S3_URL and ENA_S3_ROOT_PATH in the [config file](atlas-fastq-provider-config.sh).
+
+#### Private files using SSH
 
 EBI personnel can also retrieve files from private locations on the ENA server by specifying ENA_PRIVATE_SSH_ROOT_DIR and running commands like:
+
+```
+fetchFastq.sh -f my_private_file1.fastq.gz -t my_private_file1.fastq.gz -p private -l ERR123456
+```
+
+Note that the library name must also be specified.
+
+WARNING: This method will be phased out soon.
+
+#### Private files using S3
+
+EBI personnel can also retrieve private ENA files via AWS S3.  This is currently the preferred method of retrieving private files from ENA.  To use, specify the variables ENA_PRIVATE_S3_ROOT_PATH and ENA_S3_PROFILE, which is an AWS profile with credentials to access private ENA paths. The command will also use the ENA_S3_URL set in the [config file](atlas-fastq-provider-config.sh).  Run this like below:
 
 ```
 fetchFastq.sh -f my_private_file1.fastq.gz -t my_private_file1.fastq.gz -p private -l ERR123456
