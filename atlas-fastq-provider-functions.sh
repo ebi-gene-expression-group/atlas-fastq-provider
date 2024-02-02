@@ -1221,7 +1221,7 @@ convert_ena_fastq_to_uri() {
     local returnCode=0
 
     # .sra file downloads are just like
-    # https://hx.fire.sdo.ebi.ac.uk/fire/public/sra/srr/SRR100/061/SRR10009461
+    # https://hl.fire.sdo.ebi.ac.uk/era-public/srr/SRR100/061/SRR10009461
     # (so just looks like the dir if this was for an FTP file)
     if [ "$library" == '' ]; then
         library=$(get_library_id_from_uri $fastq)
