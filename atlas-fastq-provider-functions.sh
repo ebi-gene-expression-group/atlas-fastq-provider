@@ -89,7 +89,7 @@ check_ena_ssh() {
 
 check_ena_s3_profile() {
     if [ -z "$ENA_S3_PROFILE" ]; then
-        echo "ERROR: To query or download files from the ENA server using AWS S3, you need to set the environment variable ENA_S3_PROFILE. This is an S3 profile with credentials for the retrieval of files from $ENA_S3_URL."
+        echo "ERROR: To query or download files from the ENA server using AWS S3, you need to set the environment variable ENA_S3_PROFILE. This is an S3 profile with credentials for the retrieval of files from the ENA S3 URL $ENA_S3_URL."
         return 1
     else
         return 0
@@ -173,7 +173,7 @@ validate_ena_fire_path() {
     if [ $? -eq 0 ]; then
         return 0
     else
-        echo "ERROR: ${status} file ${enaFile} not present on ${ENA_S3_URL}" 1>&2
+        echo "ERROR: ${status} file ${enaFile} not present on ${ENA_S3_URL}, or profile ${ENA_S3_PROFILE} does not have access permission." 1>&2
         return 1
     fi
 }
