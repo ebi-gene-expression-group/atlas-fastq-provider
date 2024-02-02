@@ -1034,13 +1034,6 @@ fetch_file_from_ena_over_s3() {
         return 3
     fi
 
-    # # Check we can sudo to the necessary user
-    # local sudoString=
-    # sudoString=$(fetch_ena_sudo_string)
-    # if [ $? -ne 0 ]; then 
-    #     return 4 
-    # fi
-
     # Convert file into an ENA path
     
     enaPath=$(convert_ena_fastq_to_fire_path $enaFile $status $library)
@@ -1060,23 +1053,15 @@ fetch_file_from_ena_over_s3() {
         return 2
     fi
     
-    # Make destination group-writable if we need to sudo ################ MODIFY THIS COMMENT
+    # Prepare download to a temporary location
     
     local s3TempFile=${destFile}.tmp
 
-    # if [ "$sudoString" != '' ]; then
-    #     local s3TempDir=$tempdir/s3
-    #     mkdir -p $s3TempDir
-    #     chmod a+rwx $s3TempDir
-    #     s3TempFile=$s3TempDir/$(basename ${destFile}).tmp
-    # fi
-    
     rm -f $s3TempFile
 
     echo "Downloading FIRE file $enaPath to $destFile using AWS S3"
     
-    # Run the rsync over SSH, sudo'ing if necessary use wait_and_record() to
-    # avoid overloading the server
+    # Copy over S3, use wait_and_record()
 
     mkdir -p $(dirname $destFile)
 
@@ -1097,16 +1082,6 @@ fetch_file_from_ena_over_s3() {
         echo "ERROR: Failed to retrieve $enaPath to ${destFile}" 1>&2
         return 1
     fi
-
-    # Move or copy files to final locations
-
-    # if [ "$sudoString" != '' ]; then
-    #     $sudoString chmod a+r ${s3TempFile}
-    #     cp ${s3TempFile} ${destFile}
-    #     $sudoString rm -f ${s3TempFile}
-    # else
-    #     mv ${s3TempFile} ${destFile}
-    # fi
 
     mv ${s3TempFile} ${destFile}
     
