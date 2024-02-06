@@ -163,7 +163,7 @@ validate_ena_fire_path() {
     if [ $status != 'public' ]; then
         check_ena_s3_profile
         if [ $? -eq 1 ]; then
-            return 1
+            return 10
         fi
         sign_request="--profile ${ENA_S3_PROFILE}"
     fi
