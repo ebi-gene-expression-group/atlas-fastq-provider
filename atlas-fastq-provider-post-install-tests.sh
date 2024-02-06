@@ -41,7 +41,7 @@ setup() {
         skip "$fastq_file_ftp exists"
     fi
 
-    run rm -rf $fastq_file_ftp && eval "./fetchFastq.sh -f $fastq_s3 -m s3 -t $fastq_file_s3"
+    run rm -rf $fastq_file_s3 && eval "./fetchFastq.sh -f $fastq_s3 -t $fastq_file_s3 -m s3"
 
     [ "$status" -eq 0 ]
     [ -f "$fastq_file_ftp" ]
