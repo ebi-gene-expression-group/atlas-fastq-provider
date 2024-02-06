@@ -34,6 +34,17 @@ setup() {
     fi
 }
 
+@test "Download Fastq file via AWS S3" {
+    if  [ "$resume" = 'true' ] && [ -f "$fastq_file_ftp" ]; then
+        skip "$fastq_file_ftp exists"
+    fi
+
+    run rm -rf $fastq_file_ftp && eval "./fetchFastq.sh -f $fastq -m s3 -t $fastq_file_ftp"
+
+    [ "$status" -eq 0 ]
+    [ -f "$fastq_file_ftp" ]
+}
+
 @test "Download Fastq file from FTP" {
     if  [ "$resume" = 'true' ] && [ -f "$fastq_file_ftp" ]; then
         skip "$fastq_file_ftp exists"
