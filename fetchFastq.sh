@@ -71,7 +71,7 @@ file_or_uri=$f
 target=$t
 fileSource=$s
 method=$m
-status=$p
+privacy_status=$p
 library=$l
 configFile=$c
 validateOnly=$v
@@ -91,13 +91,13 @@ guessedSource=$(guess_file_source $file_or_uri)
 
 # If source is determined as HCA allow it to override specified method
 
-if [[  "$guessedSource" == 'hca' || ( "$fileSource" == 'auto' && "$status" != 'private' ) ]]; then
+if [[  "$guessedSource" == 'hca' || ( "$fileSource" == 'auto' && "$privacy_status" != 'private' ) ]]; then
     fileSource=$guessedSource
 fi
 
 # Guess the method when set to 'auto', set to AWS S3 for private
 
-if [ "$status" == 'private' ]; then 
+if [ "$privacy_status" == 'private' ]; then 
 
     method='ena_s3'
     fileSource='ena'
@@ -164,12 +164,12 @@ elif [ "$method" == 'dir' ]; then
 
 elif [ "$method" == 'ena_ssh' ]; then
     # Use an SSH connection to retrieve the file
-    fetch_file_from_ena_over_ssh $file_or_uri $target "$ENA_RETRIES" "$library" "$validateOnly" "$downloadType" $status
+    fetch_file_from_ena_over_ssh $file_or_uri $target "$ENA_RETRIES" "$library" "$validateOnly" "$downloadType" $privacy_status
     fetch_status=$?
 
 elif [ "$method" == 'ena_s3' ]; then
     # Use AWS S3 to retrieve the file
-    fetch_file_from_ena_over_s3 $file_or_uri $target "$ENA_RETRIES" "$library" "$validateOnly" "$downloadType" $status
+    fetch_file_from_ena_over_s3 $file_or_uri $target "$ENA_RETRIES" "$library" "$validateOnly" "$downloadType" $privacy_status
     fetch_status=$?
 
 elif [ "$method" == 'ena_http' ]; then
