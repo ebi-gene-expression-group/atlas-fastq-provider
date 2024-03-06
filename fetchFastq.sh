@@ -71,7 +71,7 @@ file_or_uri=$f
 target=$t
 fileSource=$s
 method=$m
-status=$p
+privacy_status=$p
 library=$l
 configFile=$c
 validateOnly=$v
@@ -91,15 +91,15 @@ guessedSource=$(guess_file_source $file_or_uri)
 
 # If source is determined as HCA allow it to override specified method
 
-if [[  "$guessedSource" == 'hca' || ( "$fileSource" == 'auto' && "$status" != 'private' ) ]]; then
+if [[  "$guessedSource" == 'hca' || ( "$fileSource" == 'auto' && "$privacy_status" != 'private' ) ]]; then
     fileSource=$guessedSource
 fi
 
-# Guess the method when set to 'auto', set to SSH for private
+# Guess the method when set to 'auto', set to AWS S3 for private
 
-if [ "$status" == 'private' ]; then 
+if [ "$privacy_status" == 'private' ]; then 
 
-    method='ena_ssh'
+    method='ena_s3'
     fileSource='ena'
 
 elif [ "$fileSource" == 'hca' ]; then
@@ -124,7 +124,7 @@ elif [ "$method" != 'wget' ]; then
     
     if [ "$fileSource" == 'ena' ]; then
 
-        if [ "$method" == 'ssh' ] || [ "$method" == 'ftp' ] || [ "$method" == 'http' ];then
+        if [ "$method" == 's3' ] || [ "$method" == 'ssh' ] || [ "$method" == 'ftp' ] || [ "$method" == 'http' ];then
             method="ena_$method"
         else
             echo "$method not valid for ENA" 1>&2
@@ -160,12 +160,17 @@ elif [ "$method" == 'wget' ]; then
 
 elif [ "$method" == 'dir' ]; then
     link_local_file $fileSource $file_or_uri $target
-    fetch_status=$?    
+    fetch_status=$?
 
 elif [ "$method" == 'ena_ssh' ]; then
     # Use an SSH connection to retrieve the file
-    fetch_file_from_ena_over_ssh $file_or_uri $target "$ENA_RETRIES" "$library" "$validateOnly" "$downloadType" $status
-    fetch_status=$?    
+    fetch_file_from_ena_over_ssh $file_or_uri $target "$ENA_RETRIES" "$library" "$validateOnly" "$downloadType" $privacy_status
+    fetch_status=$?
+
+elif [ "$method" == 'ena_s3' ]; then
+    # Use AWS S3 to retrieve the file
+    fetch_file_from_ena_over_s3 $file_or_uri $target "$ENA_RETRIES" "$library" "$validateOnly" "$downloadType" $privacy_status
+    fetch_status=$?
 
 elif [ "$method" == 'ena_http' ]; then
     
@@ -221,6 +226,8 @@ else
         echo "Probable malformed HCA command" 1>&2
     elif [ $fetch_status -eq 9 ]; then
         echo "SRA file retrieval issue" 1>&2
+    elif [ $fetch_status -eq 10 ]; then
+        echo "ENA_S3_PROFILE needed, can't use AWS S3"
     else
         echo "download failed"  1>&2
     fi
