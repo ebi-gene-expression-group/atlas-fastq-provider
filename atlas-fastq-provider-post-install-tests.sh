@@ -37,7 +37,7 @@ setup() {
 }
 
 @test "Download Fastq file via AWS S3" {
-    if  [ "$resume" = 'true' ] && [ -f "$fastq_file_ftp" ]; then
+    if  [ "$resume" = 'true' ] && [ -f "$fastq_file_s3" ]; then
         skip "$fastq_file_ftp exists"
     fi
 
