@@ -451,7 +451,7 @@ function fetch_file_by_hca {
             if [ $? -ne 0 ]; then
                 echo "Can't get bundle content for UUID $bundle" 1>&2
             else
-                url=$(echo "$bundle_content" | jq -r '.url')
+                url=$(echo "$bundle_content" | jq -r '.azul_url')
                 sha256=$(echo "$bundle_content" | jq -r '.sha256')
 
                 wget -O $destFile $url
