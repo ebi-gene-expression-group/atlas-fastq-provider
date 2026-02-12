@@ -437,7 +437,7 @@ function fetch_file_by_hca {
     local bundle=$(echo $sourceFile | awk -F'/' '{print $1}')
     
     local bundleUriTemplate=${DCP_BUNDLE_URI:-'https://service.azul.data.humancellatlas.org/index/bundles/BUNDLE'}
-    local bundleCatalogs=${DCP_BUNDLE_CATALOGS:-'dcp1 dcp7'}
+    local bundleCatalogs=${DCP_BUNDLE_CATALOGS:-'dcp56'}
     local bundleUri=$(echo $bundleUriTemplate | sed "s/BUNDLE/$bundle/g")
 
     # Check multiple catalogs for this bundle UUID
