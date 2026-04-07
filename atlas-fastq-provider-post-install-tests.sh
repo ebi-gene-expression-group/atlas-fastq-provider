@@ -6,6 +6,8 @@ setup() {
     data_dir="${test_dir}/data"
     output_dir="${test_dir}/outputs"
     fastq="ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR188/002/ERR1888172/ERR1888172_1.fastq.gz"
+    fastq_s3="ERR1888172_1.fastq.gz"
+    fastq_file_s3="${output_dir}/ERR1888172_1.s3.fastq.gz"
     fastq_file_ftp="${output_dir}/ERR1888172_1.ftp.fastq.gz"
     fastq_file_http="${output_dir}/ERR1888172_1.http.fastq.gz"
     sra="sra/ftp://ftp.sra.ebi.ac.uk/vol1/srr/SRR100/060/SRR10069860/SRR10069860_1.fastq.gz"
@@ -32,6 +34,17 @@ setup() {
     if [ ! -d "$output_dir" ]; then
         mkdir -p $output_dir
     fi
+}
+
+@test "Download Fastq file via AWS S3" {
+    if  [ "$resume" = 'true' ] && [ -f "$fastq_file_s3" ]; then
+        skip "$fastq_file_s3 exists"
+    fi
+
+    run rm -rf $fastq_file_s3 && eval "./fetchFastq.sh -f $fastq_s3 -t $fastq_file_s3 -m s3"
+
+    [ "$status" -eq 0 ]
+    [ -f "$fastq_file_ftp" ]
 }
 
 @test "Download Fastq file from FTP" {

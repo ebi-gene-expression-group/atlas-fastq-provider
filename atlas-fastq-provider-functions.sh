@@ -85,6 +85,17 @@ check_ena_ssh() {
     fi
 }
 
+# 
+
+check_ena_s3_profile() {
+    if [ -z "$ENA_S3_PROFILE" ]; then
+        echo "ERROR: To query or download files from the ENA server using AWS S3, you need to set the environment variable ENA_S3_PROFILE. This is an S3 profile with credentials for the retrieval of files from the ENA S3 URL $ENA_S3_URL."
+        return 1
+    else
+        return 0
+    fi
+}
+
 # Get a string to sudo as necessary
 
 fetch_ena_sudo_string() {
@@ -134,6 +145,35 @@ validate_ena_ssh_path() {
         return 0
     else
         echo "ERROR: ${enaFile} not present on ${ENA_SSH_HOST}" 1>&2
+        return 1
+    fi
+}
+
+
+# Use AWS S3 to check if the file is in ENA. Note that the '-n' is important,
+# because any 'while read' loops calling this script use STDIN, which SSH will
+# consume otherwise.
+
+validate_ena_fire_path() {
+    local enaFile=$1
+    local privacy_status=${2:-'public'}
+    
+    local sign_request="--no-sign-request"
+
+    if [ $privacy_status != 'public' ]; then
+        check_ena_s3_profile
+        if [ $? -eq 1 ]; then
+            return 10
+        fi
+        sign_request="--profile ${ENA_S3_PROFILE}"
+    fi
+
+    aws $sign_request --endpoint-url $ENA_S3_URL s3 ls $enaFile > /dev/null 2>&1
+     
+    if [ $? -eq 0 ]; then
+        return 0
+    else
+        echo "ERROR: ${status} file ${enaFile} not present on ${ENA_S3_URL}, or profile ${ENA_S3_PROFILE} does not have access permission." 1>&2
         return 1
     fi
 }
@@ -485,7 +525,7 @@ function fetch_library_files_from_sra_file() {
     local outputDir=${2:-"$(pwd)"}
     local retries=${3:-3}
     local method=${4:-'auto'}
-    local status=${5:-'public'}
+    local privacy_status=${5:-'public'}
     local tempdir=$(get_temp_dir)
     local returnCode=0
 
@@ -494,7 +534,7 @@ function fetch_library_files_from_sra_file() {
     local library
     library=$(get_library_id_from_uri $sraFile)
 
-    local sourceFile=$(dirname $(get_library_path $library $ENA_FTP_ROOT_PATH/srr))
+    local sourceFile=$(dirname "$(get_library_path "${library}" "${ENA_FTP_ROOT_PATH}/srr")")
     outputDir=$(realpath $outputDir)
 
     # If user has specifified wget, reset to FTP for ENA
@@ -515,7 +555,7 @@ function fetch_library_files_from_sra_file() {
     pushd $tempdir/$library > /dev/null
 
     if [ ! -e $library ]; then
-        $fetchMethod $library $library $retries "" "" "srr" $status
+        $fetchMethod $library $library $retries "" "" "srr" $privacy_status
         returnCode=$?
         
         # Fall back to a simple wget in case the SRA file is not in ENA
@@ -576,7 +616,7 @@ function fetch_file_by_sra {
     local destFile=$2
     local retries=${3:-3}
     local method=${4:-'auto'}
-    local status=${5:-'public'}
+    local privacy_status=${5:-'public'}
     local returnCode=0
 
     sourceFile=$(echo "$sourceFile" | sed 's/^sra\///')
@@ -587,7 +627,7 @@ function fetch_file_by_sra {
     local sraFile=$(echo -e "$sourceFile"| awk -F "/" '{print $NF}')
 
     if [ $returnCode -eq 0 ]; then
-        fetch_library_files_from_sra_file "$sraUri" "$destDir" "$retries" "$method" "$status" 
+        fetch_library_files_from_sra_file "$sraUri" "$destDir" "$retries" "$method" "$privacy_status" 
         returnCode=$?
         
         if [ $returnCode -eq 0 ]; then
@@ -664,7 +704,7 @@ probe_ena_methods() {
 
     local probe_file=${1:-''}
     local tempdir=$(get_temp_dir)
-    local allowedDownloadMethods=${ALLOWED_DOWNLOAD_METHODS:-'ftp http ssh'}
+    local allowedDownloadMethods=${ALLOWED_DOWNLOAD_METHODS:-'ftp http ssh s3'}
     local testFile=   
  
     if [ -z "$probe_file" ]; then
@@ -874,7 +914,7 @@ fetch_file_from_ena_over_ssh() {
     local library=${4:-''}
     local validateOnly=${5:-''}
     local downloadType=${6:-'fastq'}
-    local status=${7:-'public'}
+    local privacy_status=${7:-'public'}
     local tempdir=$(get_temp_dir)
 
     check_variables "enaFile" "destFile"
@@ -898,7 +938,7 @@ fetch_file_from_ena_over_ssh() {
     fi
 
     # Convert to an ENA path
-    enaPath=$(convert_ena_fastq_to_ssh_path $enaFile $status $library)
+    enaPath=$(convert_ena_fastq_to_ssh_path $enaFile $privacy_status $library)
 
     # Check file is present at specified location    
     validate_ena_ssh_path $enaPath    
@@ -963,6 +1003,91 @@ fetch_file_from_ena_over_ssh() {
     return 0
 }
 
+fetch_file_from_ena_over_s3() {
+    local enaFile=$1
+    local destFile=$2
+    local retries=${3:-3}
+    local library=${4:-''}
+    local validateOnly=${5:-''}
+    local downloadType=${6:-'fastq'}
+    local privacy_status=${7:-'public'}
+    local tempdir=$(get_temp_dir)
+
+    check_variables "enaFile" "destFile"
+
+    # Run status-specific check
+
+    local sign_request="--no-sign-request"
+
+    if [ $privacy_status != 'public' ]; then
+        sign_request="--profile ${ENA_S3_PROFILE}"
+        check_ena_s3_profile
+        if [ $? -eq 1 ]; then
+            return 10
+        fi 
+    fi
+
+    # Check if chosen method is working
+
+    check_ena_method 's3'
+    if [ $? -ne 0 ]; then
+        return 3
+    fi
+
+    # Convert file into an ENA path
+    
+    enaPath=$(convert_ena_fastq_to_fire_path $enaFile $privacy_status $library)
+
+    # Check file is present at specified location given permissions
+
+    validate_ena_fire_path $enaPath $privacy_status
+    if [ $? -ne 0 ]; then 
+        return 5 
+    elif [ -n "$validateOnly" ]; then
+        return 0
+    fi
+    
+    # Check destination file not already present
+
+    if [ -e "$destFile" ]; then
+        return 2
+    fi
+    
+    # Prepare download to a temporary location
+    
+    local s3TempFile=${destFile}.tmp
+
+    rm -f $s3TempFile
+
+    echo "Downloading FIRE file $enaPath to $destFile using AWS S3"
+    
+    # Copy over S3, use wait_and_record()
+
+    mkdir -p $(dirname $destFile)
+
+    local process_status=1
+    for i in $(seq 1 $retries); do 
+        
+        wait_and_record 'ena_s3'
+    
+        aws $sign_request --endpoint-url $ENA_S3_URL s3 cp $enaPath $s3TempFile > /dev/null
+
+        if [ $? -eq 0 ]; then
+            process_status=0
+            break
+        fi
+    done
+
+    if [ $process_status -ne 0 ] || [ ! -s ${s3TempFile} ] ; then
+        echo "ERROR: Failed to retrieve $enaPath to ${destFile}" 1>&2
+        return 1
+    fi
+
+    mv ${s3TempFile} ${destFile}
+    
+    return 0
+}
+
 fetch_file_from_ena_over_http() {
     local enaFile=$1
     local destFile=$2
@@ -1001,12 +1126,12 @@ fetch_file_from_ena_over_ftp() {
 
 convert_ena_fastq_to_ssh_path(){
     local fastq=$1
-    local status=${2:-'public'}
+    local privacy_status=${2:-'public'}
     local library=${3:-''}
     local returnCode=0
 
     local fastq=$(basename $fastq)
-    if [ "$status" == 'private' ]; then
+    if [ "$privacy_status" == 'private' ]; then
         if [ "$library" == '' ]; then
             echo "ERROR: For private FASTQ files, the library cannot be inferred from the file name and must be specified" 1>&2
             returnCode=1
@@ -1020,13 +1145,44 @@ convert_ena_fastq_to_ssh_path(){
         return $returnCode
     else
         local libDir=
-        if [ "$status" == 'private' ]; then
-            libDir=$(dirname $(get_library_path $library $ENA_PRIVATE_SSH_ROOT_DIR 'short'))
+        if [ "$privacy_status" == 'private' ]; then
+            libDir=$(dirname "$(get_library_path "${library}" "${ENA_PRIVATE_SSH_ROOT_DIR}" 'short')")
         else
-            libDir=$(dirname $(get_library_path $library $ENA_SSH_ROOT_DIR/fastq))
+            libDir=$(dirname "$(get_library_path "${library}" "${ENA_SSH_ROOT_DIR}/fastq")")
         fi
 
         echo $libDir/$fastq
+    fi
+}
+
+convert_ena_fastq_to_fire_path(){
+    local fastq=$1
+    local privacy_status=${2:-'public'}
+    local library=${3:-''}
+    local returnCode=0
+
+    local fastqBase=$(basename $fastq)
+    if [ "$privacy_status" == 'private' ]; then
+        if [ "$library" == '' ]; then
+            echo "ERROR: For private FASTQ files, the library cannot be inferred from the file name and must be specified" 1>&2
+            returnCode=1
+        fi 
+    else
+        library=$(get_library_id_from_uri $fastqBase)
+        returnCode=$?
+    fi
+
+    if [ $returnCode -ne 0 ]; then
+        return $returnCode
+    else
+        local libDir=
+        if [ "$privacy_status" == 'private' ]; then
+            libDir=$(dirname "$(get_library_path "${library}" "${ENA_PRIVATE_S3_ROOT_PATH}" 'short')")
+        else
+            libDir=$(dirname "$(get_library_path "${library}" "${ENA_S3_ROOT_PATH}/fastq")")
+        fi
+
+        echo $libDir/$fastqBase
     fi
 }
 
@@ -1054,7 +1210,7 @@ convert_ena_fastq_to_uri() {
             fastq=''
         fi
 
-        local libDir=$(dirname $(get_library_path $library) | sed s+^/++)
+        local libDir=$(dirname "$(get_library_path "${library}")" | sed s+^/++)
         if [ "$uriType" == 'http' ]; then
             echo ${ENA_HTTP_ROOT_PATH}/$downloadType/$libDir$fastq
         else
@@ -1088,20 +1244,20 @@ validate_url(){
 get_library_listing() {
     local library=$1
     local method=${2:-'ssh'}    
-    local status=${3:-'public'}
+    local privacy_status=${3:-'public'}
     local tempdir=$(get_temp_dir)
 
     check_variables 'library'
 
     local libDir=
     if [ "$method" == 'ssh' ]; then
-        if [ "$status" == 'private' ]; then
-            libDir=$(dirname $(get_library_path $library $ENA_PRIVATE_SSH_ROOT_DIR 'short'))
+        if [ "$privacy_status" == 'private' ]; then
+            libDir=$(dirname "$(get_library_path "${library}" "${ENA_PRIVATE_SSH_ROOT_DIR}" 'short')")
         else
-            libDir=$(dirname $(get_library_path $library $ENA_SSH_ROOT_DIR/fastq))
+            libDir=$(dirname "$(get_library_path "${library}" "${ENA_SSH_ROOT_DIR}/fastq")")
         fi
     else
-        libDir=$(dirname $(get_library_path $library $ENA_FTP_ROOT_PATH/fastq))
+        libDir=$(dirname "$(get_library_path "${library}" "${ENA_FTP_ROOT_PATH}/fastq")")
     fi
     
     if [ "$method" == 'ssh' ]; then
@@ -1146,7 +1302,7 @@ fetch_library_files_from_ena() {
     local outputDir=$2
     local retries=${3:-3}
     local method=${4:-'auto'}
-    local status=${5:-'public'}
+    local privacy_status=${5:-'public'}
     local downloadType=${6:-'fastq'}
     local sepe=${7:-'PAIRED'}
 
@@ -1161,7 +1317,7 @@ fetch_library_files_from_ena() {
     fi
 
     local libraryListing=
-    libraryListing=$(get_library_listing $library $listMethod $status)
+    libraryListing=$(get_library_listing $library $listMethod $privacy_status)
     local exitCode=$?
 
     if [ $exitCode -ne 0 ]; then
@@ -1176,7 +1332,7 @@ fetch_library_files_from_ena() {
                 fetchMethod="fetch_file_from_ena_over_$method"
             fi
 
-            $fetchMethod $l $tempdir/$fileName $retries $library "" "$downloadType" $status
+            $fetchMethod $l $tempdir/$fileName $retries $library "" "$downloadType" $privacy_status
             local returnCode=$?
             if [ $returnCode -ne 0 ]; then
                 return $returnCode
